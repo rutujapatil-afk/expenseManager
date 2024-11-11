@@ -1,25 +1,34 @@
 import re
 import joblib
 import streamlit as st
-from sklearn.naive_bayes import MultinomialNB
 import nltk
+from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
-nltk.download('stopwords')
 import os
 
-import joblib
+# Download NLTK stopwords if not already present
+nltk.download('stopwords')
 
-try:
-    model = joblib.load('models/spam_classifier_model.pkl')
-    vectorizer = joblib.load('models/tfidf_vectorizer.pkl')
-    print("Model and vectorizer loaded successfully.")
-except FileNotFoundError as e:
-    print(f"FileNotFoundError: {e}")
-except Exception as e:
-    print(f"Error loading model: {e}")
+# Define the paths to the model and vectorizer
+model_path = './models/spam_classifier_model.pkl'
+vectorizer_path = './models/tfidf_vectorizer.pkl'
 
+# Display the current working directory for debugging
+st.write("Current working directory:", os.getcwd())
 
+# Check if the model files exist before trying to load them
+if os.path.exists(model_path) and os.path.exists(vectorizer_path):
+    try:
+        model = joblib.load(model_path)
+        vectorizer = joblib.load(vectorizer_path)
+        st.write("Model and vectorizer loaded successfully.")
+    except Exception as e:
+        st.write(f"Error loading model or vectorizer: {e}")
+else:
+    st.write("Model files not found in the expected paths!")
+    st.write(f"Model path: {model_path}")
+    st.write(f"Vectorizer path: {vectorizer_path}")
 
 # Initialize stopwords and stemmer
 stop_words = set(stopwords.words('english'))
@@ -83,7 +92,7 @@ def display_spam_detector(user_account):
                 st.write("Transaction added successfully!")
 
 class UserAccount:
-    def _init_(self, initial_balance=10000.0):
+    def __init__(self, initial_balance=10000.0):
         self.balance = initial_balance
         self.transactions = []  # Store transaction details
 
