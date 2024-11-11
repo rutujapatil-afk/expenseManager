@@ -62,7 +62,7 @@ def expense_dashboard():
         
         # Add Expense form
         amount = st.number_input("Amount", min_value=0.0, step=0.01)
-        category = st.selectbox("Category", ["Food", "Transport","Shopping","Entertainment","Health","Others"])
+        category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
         expense_date = st.date_input("Date", value=date.today())
         description = ""
 
@@ -109,6 +109,21 @@ def expense_dashboard():
                     st.warning("No transactions selected for deletion.")
         else:
             st.write("No expenses to delete.")
+
+    # Machine Learning Model Section (Add your model code here)
+    with st.expander("Investment Policy Suggestions (ML Models)"):
+        st.subheader("Investment Suggestions")
+        st.write("Here we will provide suggestions based on your expense history.")
+        # Placeholder for the machine learning model's output
+        # You can replace this with the actual ML model integration logic
+        st.write("ML model will suggest personalized investment strategies based on your expenses.")
+
+    # SMS Classification Section (Add your model code here)
+    with st.expander("SMS Classification"):
+        st.subheader("SMS Classification")
+        st.write("Here we will classify SMS messages to identify financial transactions.")
+        # Placeholder for the SMS classification model logic
+        st.write("SMS model will categorize messages based on your financial activity.")
 
 # Profile Setup for First-Time Login
 def profile_setup():
