@@ -23,7 +23,7 @@ policy_data, spending_data = load_data()
 # Data Preprocessing
 def preprocess_data(spending_data, policy_data):
     spending_data.columns = spending_data.columns.str.strip()
-    spending_data['Date'] = pd.to_datetime(spending_data['Date']) 
+    spending_data['Date'] = pd.to_datetime(spending_data['Date'])
     monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
     monthly_spending.rename(columns={'Amount': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
     monthly_spending['Month'] = monthly_spending['Month'].dt.to_timestamp().dt.year * 100 + monthly_spending['Month'].dt.month
@@ -74,21 +74,23 @@ def get_user_input():
     """
     Get the user input for monthly investment and investment duration.
     """
-    st.header("User Investment Details")
-    
+    st.header("Enter Your Investment Details")
+
+    # Creating a form to input investment amount and duration
     with st.form(key='investment_form'):
         monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
         investment_duration = st.number_input("Enter your investment duration (in months):", min_value=1, max_value=600, value=12)
 
         submit_button = st.form_submit_button(label='Submit Investment')
+        
         if submit_button:
-            # Store inputs in session state so they persist
+            # Save inputs to session state so that we can access them later
             st.session_state.monthly_investment = monthly_investment
             st.session_state.investment_duration = investment_duration
             st.session_state.input_submitted = True  # Mark that input was submitted
             st.success("Investment details submitted successfully!")
-            
-    # If no data is in session state, return None
+
+    # If no data in session state, return None
     if 'monthly_investment' not in st.session_state or 'investment_duration' not in st.session_state:
         return None, None
 
@@ -154,3 +156,4 @@ def display_policy_suggestion():
                 visualize_policy_comparison(suitable_policies)
         else:
             st.write("Please click 'Analyze' after filling out your investment details.")
+
