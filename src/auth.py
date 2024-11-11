@@ -5,44 +5,61 @@ import os
 
 # Function to hash passwords
 def hash_password(password):
+    """
+    Hash a given password using SHA-256.
+    """
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Load or create users data
+# Path to the users CSV file
 users_file = "data/users.csv"
+
+# Create the users CSV file if it doesn't exist
 if not os.path.exists(users_file):
-    # Create an empty users file if it doesn't exist
     pd.DataFrame(columns=["username", "password"]).to_csv(users_file, index=False)
 
 def load_users():
+    """
+    Load the users from the CSV file into a pandas DataFrame.
+    """
     return pd.read_csv(users_file)
 
-# Save new user to file
 def save_user(username, password):
-    new_user = pd.DataFrame([[username, hash_password(password)]], columns=["username", "password"])
+    """
+    Save the new user (with hashed password) to the users CSV file.
+    """
+    hashed_password = hash_password(password)
+    new_user = pd.DataFrame([[username, hashed_password]], columns=["username", "password"])
     new_user.to_csv(users_file, mode="a", header=False, index=False)
 
-# Authentication Functions
 def authenticate(username, password):
+    """
+    Authenticate the user by comparing the entered password's hash with the stored hash.
+    """
     users = load_users()
-    user = users[(users["username"] == username) & (users["password"] == hash_password(password))]
+    hashed_password = hash_password(password)  # Hash the entered password
+    user = users[(users["username"] == username) & (users["password"] == hashed_password)]
     return not user.empty
 
-# Registration Functions
 def register_user(username, password):
+    """
+    Register a new user by checking if the username exists. If not, save the user to the CSV file.
+    """
     users = load_users()
     if username in users["username"].values:
-        return False
-    save_user(username, password)
+        return False  # Username already taken
+    save_user(username, password)  # Save the user with hashed password
     return True
 
-# Login and Signup Interface
 def login_signup():
+    """
+    Display login and signup form, and handle authentication and registration.
+    """
     st.title("Expense Manager Login")
 
-    # Tabs for login and signup
+    # Create tabs for Login and Sign Up
     tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
 
-    # Login tab
+    # Login Tab
     with tab_login:
         st.subheader("Login")
         username = st.text_input("Username", key="login_username")
@@ -58,7 +75,7 @@ def login_signup():
             else:
                 st.error("Invalid username or password.")
 
-    # Signup tab
+    # Sign Up Tab
     with tab_signup:
         st.subheader("Sign Up")
         new_username = st.text_input("New Username", key="signup_username")
@@ -71,16 +88,6 @@ def login_signup():
             else:
                 st.error("Username already taken. Please choose a different one.")
 
-# Main Application
-def main_app():
-    st.title(f"Welcome, {st.session_state.username}!")
-    # Your main dashboard content goes here...
-
-# Check login status
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-if not st.session_state.logged_in:
+# This is where you will handle both login and sign up logic
+if __name__ == "__main__":
     login_signup()
-else:
-    main_app()
