@@ -1,6 +1,17 @@
 import streamlit as st
 from models import spam_classifier, policy_suggestion, budgeting_model
 import pandas as pd
+import streamlit as st
+import nltk
+
+try:
+    nltk.data.find('corpora/stopwords')
+except LookupError:
+    nltk.download('stopwords')
+
+# Your other imports and code
+from models import spam_classifier, policy_suggestion, budgeting_model
+
 
 # Load data or mock data
 transaction_data = pd.read_csv("data/transactions.csv")
@@ -24,5 +35,3 @@ if st.button("Analyze Bank Messages"):
 if st.button("Investment Policy Suggestion"):
     policy_suggestion.display_policy_suggestion()
 
-if st.button("Budgeting Assistance"):
-    budgeting_model.display_budgeting_model()

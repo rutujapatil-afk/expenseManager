@@ -2,8 +2,10 @@ import re
 import joblib
 import streamlit as st
 from sklearn.naive_bayes import MultinomialNB
+import nltk
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
+nltk.download('stopwords')
 
 # Load pre-trained model and vectorizer
 model = joblib.load('spam_classifier_model.pkl')
