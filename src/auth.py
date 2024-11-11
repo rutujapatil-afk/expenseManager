@@ -3,7 +3,7 @@ import pandas as pd
 import hashlib
 import os
 
-# Function to hash passwords (using SHA-256)
+# Function to hash passwords
 def hash_password(password):
     """
     Hash a given password using SHA-256.
@@ -21,8 +21,10 @@ def load_users():
     """
     Load the users from the CSV file into a pandas DataFrame.
     """
-    users = pd.read_csv(users_file)  # Default delimiter is comma (no need to specify)
+    users = pd.read_csv(users_file, delimiter='\t')  # Specify tab delimiter
+    print(users.head())  # Debugging statement to check the data
     return users
+
 
 def save_user(username, password):
     """
@@ -39,7 +41,7 @@ def authenticate(username, password):
     users = load_users()
     hashed_password = hash_password(password)  # Hash the entered password
     user = users[(users["username"] == username) & (users["password"] == hashed_password)]
-    return not user.empty  # If user found, return True, else False
+    return not user.empty
 
 def register_user(username, password):
     """
@@ -69,16 +71,17 @@ def login_signup():
         
         if login_button:
             if authenticate(username, password):
-                # If login is successful, store session data
+            # If login is successful, store session data
                 st.session_state.logged_in = True
                 st.session_state.username = username
                 st.success("Login successful!")
-                st.experimental_rerun()  # Rerun the app to refresh the state and show the dashboard
+                st.experimental_rerun()
             else:
                 st.error("Invalid username or password.")
                 # Optionally clear session if login fails
                 st.session_state.clear()  # Clear the session state on failure
                 st.experimental_rerun()  # Rerun the app to reset
+
 
     # Sign Up Tab
     with tab_signup:
