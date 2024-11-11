@@ -50,7 +50,14 @@ def preprocess_data(spending_data, policy_data):
     policy_data['Interest Rate Category'] = pd.cut(policy_data['Interest Rate (%)'],
                                                    bins=[0, 5, 10, 15, np.inf],
                                                    labels=['Low', 'Medium', 'High', 'Very High'])
-    
+
+    # Ensure columns are present
+    required_columns = ['Policy Type', 'Interest Rate (%)', 'Duration (Years)', 'Premium Amount ($)']
+    missing_columns = [col for col in required_columns if col not in policy_data.columns]
+    if missing_columns:
+        st.error(f"Missing columns: {', '.join(missing_columns)}")
+        return None, None
+
     return monthly_spending, policy_data
 
 monthly_spending, policy_data = preprocess_data(spending_data, policy_data)
@@ -69,9 +76,10 @@ def train_models(monthly_spending, policy_data):
     acc_spending = accuracy_score(y_test_s, model_spending.predict(X_test_s))
 
     # Policy model
-    X_policy = policy_data[['Policy Type', 'Interest Rate (%)', 'Maturity Period (years)', 'Minimum Investment ($)']]
+    X_policy = policy_data[['Policy Type', 'Interest Rate (%)', 'Duration (Years)', 'Premium Amount ($)']]
 
-    X_policy = pd.get_dummies(X_policy, drop_first=True)  # Convert categorical data to dummy variables
+    # Convert categorical data to dummy variables
+    X_policy = pd.get_dummies(X_policy, drop_first=True)
     y_policy = policy_data['Interest Rate Category']
     X_train_p, X_test_p, y_train_p, y_test_p = train_test_split(X_policy, y_policy, test_size=0.2, random_state=42)
     model_policy = RandomForestClassifier(random_state=42)
@@ -117,7 +125,7 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         recommended_policy = suitable_policies.loc[suitable_policies['Potential Return ($)'].idxmax()]
 
         st.write("### Recommended Policy Based on Your Investment:")
-        st.write(recommended_policy[['Policy Name', 'Policy Type', 'Interest Rate (%)', 'Maturity Period (years)', 'Minimum Investment ($)', 'Potential Return ($)']])
+        st.write(recommended_policy[['Policy Name', 'Policy Type', 'Interest Rate (%)', 'Duration (Years)', 'Premium Amount ($)', 'Potential Return ($)']])
 
         st.write("### Reasons for Selection:")
         st.write(f"1. *Interest Rate*: The selected policy has an interest rate of {recommended_policy['Interest Rate (%)']}%, higher than the average.")
@@ -140,6 +148,8 @@ def visualize_policy_comparison(suitable_policies):
         plt.xticks(rotation=45)
         plt.title("Potential Return Comparison of Suitable Policies")
         st.pyplot(plt)
+    else:
+        st.write("No suitable policies to visualize.")
 
 # Main Function to run the app
 if __name__ == "__main__":
