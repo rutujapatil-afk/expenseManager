@@ -62,24 +62,40 @@ def expense_dashboard():
         
         # Add Expense form
         amount = st.number_input("Amount", min_value=0.0, step=0.01)
-        category = st.selectbox("Category", ["Food", "Transport", "Utilities", "Others"])
+        category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
         expense_date = st.date_input("Date", value=date.today())
         
+        # If 'Others' is selected, ask for description
+        description = ""
+        if category == "Others":
+            description = st.text_input("Description of the expense")
+
         if st.button("Add Expense"):
             # Save the expense to CSV
-            expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)]})
-            expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date"])
-            
-            # Concatenate new expense data to the existing DataFrame
-            expenses = pd.concat([expenses, expense_data], ignore_index=True)
-            
-            # Save the updated expenses to the CSV
-            expenses.to_csv("data/expenses.csv", index=False)
-            st.success(f"Expense of {amount} in category {category} added on {expense_date}.")
-        
+            if category == "Others" and not description:
+                st.error("Please provide a description for the 'Others' category.")
+            else:
+                # Prepare the expense data
+                expense_data = {
+                    "amount": [amount],
+                    "category": [category],
+                    "date": [str(expense_date)],
+                    "description": [description if category == "Others" else ""]
+                }
+
+                expense_df = pd.DataFrame(expense_data)
+                expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
+
+                # Concatenate new expense data to the existing DataFrame
+                expenses = pd.concat([expenses, expense_df], ignore_index=True)
+
+                # Save the updated expenses to the CSV
+                expenses.to_csv("data/expenses.csv", index=False)
+                st.success(f"Expense of {amount} in category {category} added on {expense_date}.")
+
         # Show expenses table
         st.subheader("Your Expenses")
-        expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date"])
+        expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
         st.dataframe(expenses)
 
         # Option to delete an expense
