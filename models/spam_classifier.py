@@ -7,8 +7,13 @@ from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 nltk.download('stopwords')
 import os
-print("Current working directory:", os.getcwd())
-model = joblib.load('models/spam_classifier_model.pkl')
+
+model_path = 'spam_classifier_model.pkl'
+if os.path.exists(model_path):
+    model = joblib.load(model_path)
+else:
+    print(f"Model file {model_path} not found.")
+
 vectorizer = joblib.load('models/tfidf_vectorizer.pkl')
 
 
