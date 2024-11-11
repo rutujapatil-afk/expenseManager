@@ -21,7 +21,10 @@ def load_users():
     """
     Load the users from the CSV file into a pandas DataFrame.
     """
-    return pd.read_csv(users_file)
+    users = pd.read_csv(users_file, delimiter='\t')  # Specify tab delimiter
+    print(users.head())  # Debugging statement to check the data
+    return users
+
 
 def save_user(username, password):
     """
