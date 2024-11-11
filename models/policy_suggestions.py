@@ -1,5 +1,3 @@
-# models/policy_suggestions.py
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -27,26 +25,22 @@ def preprocess_data(spending_data, policy_data):
     """
     Preprocess the spending data and policy data to make them ready for analysis and model training.
     """
-    # Clean and preprocess the spending data
-    spending_data.columns = spending_data.columns.str.strip()  # Remove any trailing whitespaces from column names
-    spending_data['Date'] = pd.to_datetime(spending_data['Date'])  # Convert 'Date' column to datetime
+    spending_data.columns = spending_data.columns.str.strip()
+    spending_data['Date'] = pd.to_datetime(spending_data['Date']) 
     monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
     monthly_spending.rename(columns={'Amount': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
     monthly_spending['Month'] = monthly_spending['Month'].dt.to_timestamp().dt.year * 100 + monthly_spending['Month'].dt.month
 
-    # Categorize spending into bins
     monthly_spending['Spending Category'] = pd.cut(monthly_spending['Monthly Expense ($)'],
                                                     bins=[0, 500, 1500, np.inf],
                                                     labels=['Low', 'Medium', 'High'])
 
-    # Process the policy dataset for model training
     le = LabelEncoder()
     policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
     policy_data['Interest Rate Category'] = pd.cut(policy_data['Interest Rate (%)'],
                                                    bins=[0, 5, 10, 15, np.inf],
                                                    labels=['Low', 'Medium', 'High', 'Very High'])
 
-    # Ensure columns are present
     required_columns = ['Policy Type', 'Interest Rate (%)', 'Duration (Years)', 'Premium Amount ($)']
     missing_columns = [col for col in required_columns if col not in policy_data.columns]
     if missing_columns:
@@ -59,10 +53,6 @@ monthly_spending, policy_data = preprocess_data(spending_data, policy_data)
 
 # Train the models
 def train_models(monthly_spending, policy_data):
-    """
-    Train machine learning models for spending prediction and policy recommendation.
-    """
-    # Spending model
     X_spending = monthly_spending[['Month']]
     y_spending = monthly_spending['Spending Category']
     X_train_s, X_test_s, y_train_s, y_test_s = train_test_split(X_spending, y_spending, test_size=0.2, random_state=42)
@@ -70,10 +60,7 @@ def train_models(monthly_spending, policy_data):
     model_spending.fit(X_train_s, y_train_s)
     acc_spending = accuracy_score(y_test_s, model_spending.predict(X_test_s))
 
-    # Policy model
     X_policy = policy_data[['Policy Type', 'Interest Rate (%)', 'Duration (Years)', 'Premium Amount ($)']]
-
-    # Convert categorical data to dummy variables
     X_policy = pd.get_dummies(X_policy, drop_first=True)
     y_policy = policy_data['Interest Rate Category']
     X_train_p, X_test_p, y_train_p, y_test_p = train_test_split(X_policy, y_policy, test_size=0.2, random_state=42)
@@ -88,25 +75,24 @@ model_spending, model_policy, acc_spending, acc_policy = train_models(monthly_sp
 # User Input for investment
 def get_user_input():
     """
-    Get the user input for monthly investment and investment duration from the sidebar.
+    Get the user input for monthly investment and investment duration.
     """
-    st.sidebar.header("User Investment Input")
-    monthly_investment = st.sidebar.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
-    investment_duration = st.sidebar.slider("Enter your investment duration (in months):", min_value=1, max_value=60, value=12)
-    return monthly_investment, investment_duration
+    st.header("User Investment Details")
 
-monthly_investment, investment_duration = get_user_input()
+    monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
+    investment_duration = st.slider("Enter your investment duration (in months):", min_value=1, max_value=60, value=12)
+
+    if st.button("Submit Investment"):
+        return monthly_investment, investment_duration
+    else:
+        return None, None
 
 # Policy Recommendation
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
-    """
-    Recommend an insurance policy based on user spending and investment preferences.
-    """
     user_spending = np.array([[user_investment]])
     predicted_category = spending_model.predict(user_spending)[0]
     st.write(f"Predicted Spending Category: {predicted_category}")
 
-    # Filter policies based on spending category
     if predicted_category == 'Low':
         suitable_policies = policy_data[policy_data['Interest Rate Category'] == 'Low']
     elif predicted_category == 'Medium':
@@ -134,9 +120,6 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
 
 # Visualization
 def visualize_policy_comparison(suitable_policies):
-    """
-    Visualize the potential return of suitable policies as a bar chart.
-    """
     if suitable_policies is not None and not suitable_policies.empty:
         plt.figure(figsize=(10, 6))
         sns.barplot(data=suitable_policies, x='Policy Name', y='Potential Return ($)', palette='viridis')
@@ -146,22 +129,18 @@ def visualize_policy_comparison(suitable_policies):
     else:
         st.write("No suitable policies to visualize.")
 
-# New function for display_policy_suggestion()
 def display_policy_suggestion():
     """
-    Display the policy suggestion dashboard based on the user's input.
+    Display the policy suggestion based on the user input
     """
-    st.title("Policy Suggestion Dashboard")
-    st.write("This application suggests investment policies based on your spending and investment preferences.")
-    st.write(f"*Spending Model Accuracy*: {acc_spending * 100:.2f}%")
-    st.write(f"*Policy Model Accuracy*: {acc_policy * 100:.2f}%")
+    st.title("Investment Policy Suggestion")
 
-    # Get User Investment Inputs (now on the main page)
+    # Get user input
     monthly_investment, investment_duration = get_user_input()
 
-    # Recommend Policy and Visualize
-    recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-    
-    if recommended_policy is not None and suitable_policies is not None:
-        visualize_policy_comparison(suitable_policies)
+    if monthly_investment is not None and investment_duration is not None:
+        recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+        
+        if recommended_policy is not None and suitable_policies is not None:
+            visualize_policy_comparison(suitable_policies)
 
