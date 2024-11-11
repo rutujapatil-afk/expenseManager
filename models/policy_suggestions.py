@@ -22,9 +22,6 @@ policy_data, spending_data = load_data()
 
 # Data Preprocessing
 def preprocess_data(spending_data, policy_data):
-    """
-    Preprocess the spending data and policy data to make them ready for analysis and model training.
-    """
     spending_data.columns = spending_data.columns.str.strip()
     spending_data['Date'] = pd.to_datetime(spending_data['Date']) 
     monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
@@ -78,14 +75,16 @@ def get_user_input():
     Get the user input for monthly investment and investment duration.
     """
     st.header("User Investment Details")
+    
+    with st.form(key='investment_form'):
+        monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
+        investment_duration = st.number_input("Enter your investment duration (in months):", min_value=1, max_value=600, value=12)
 
-    monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
-    investment_duration = st.slider("Enter your investment duration (in months):", min_value=1, max_value=60, value=12)
-
-    if st.button("Submit Investment"):
-        return monthly_investment, investment_duration
-    else:
-        return None, None
+        submit_button = st.form_submit_button(label='Submit Investment')
+        if submit_button:
+            return monthly_investment, investment_duration
+        else:
+            return None, None
 
 # Policy Recommendation
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
@@ -139,8 +138,11 @@ def display_policy_suggestion():
     monthly_investment, investment_duration = get_user_input()
 
     if monthly_investment is not None and investment_duration is not None:
-        recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-        
-        if recommended_policy is not None and suitable_policies is not None:
-            visualize_policy_comparison(suitable_policies)
-
+        # After the user submits investment, show the 'Analyze' button
+        if st.button('Analyze'):
+            recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+            
+            if recommended_policy is not None and suitable_policies is not None:
+                visualize_policy_comparison(suitable_policies)
+        else:
+            st.write("Please fill out the investment details and click 'Analyze'.")
