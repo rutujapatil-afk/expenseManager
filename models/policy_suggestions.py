@@ -149,12 +149,15 @@ def visualize_policy_comparison(suitable_policies):
 # New function for display_policy_suggestion()
 def display_policy_suggestion():
     """
-    Display the policy suggestion dashboard.
+    Display the policy suggestion dashboard based on the user's input.
     """
     st.title("Policy Suggestion Dashboard")
     st.write("This application suggests investment policies based on your spending and investment preferences.")
     st.write(f"*Spending Model Accuracy*: {acc_spending * 100:.2f}%")
     st.write(f"*Policy Model Accuracy*: {acc_policy * 100:.2f}%")
+
+    # Get User Investment Inputs (now on the main page)
+    monthly_investment, investment_duration = get_user_input()
 
     # Recommend Policy and Visualize
     recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)

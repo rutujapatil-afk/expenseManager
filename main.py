@@ -57,10 +57,4 @@ if st.button("Analyze Bank Messages"):
 
 # Investment Policy Suggestion Button
 if st.button("Investment Policy Suggestion"):
-    # Request the user to input their monthly investment and investment duration
-    st.sidebar.header("User Investment Input")
-    monthly_investment = st.sidebar.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
-    investment_duration = st.sidebar.slider("Enter your investment duration (in months):", min_value=1, max_value=60, value=12)
-
-    # Call the policy suggestion display function with the user input
-    policy_suggestions.display_policy_suggestion(monthly_investment, investment_duration)  # Pass the input to the suggestion function
+    policy_suggestions.display_policy_suggestion()  # No parameters passed here
