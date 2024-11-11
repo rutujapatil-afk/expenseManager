@@ -3,42 +3,51 @@ import pandas as pd
 import joblib
 from models.spam_classifier import UserAccount
 from models import spam_classifier, policy_suggestions
+import os
 
 # Load the spam model and vectorizer
 spam_model_path = './models/spam_classifier_model.pkl'
 vectorizer_path = './models/tfidf_vectorizer.pkl'
 spam_model, vectorizer = None, None
 
-if joblib.os.path.exists(spam_model_path) and joblib.os.path.exists(vectorizer_path):
+if os.path.exists(spam_model_path) and os.path.exists(vectorizer_path):
     spam_model = joblib.load(spam_model_path)
     vectorizer = joblib.load(vectorizer_path)
 
-# Load transaction data
-transaction_data = pd.read_csv("data/transactions.csv")
-balance = transaction_data["Amount"].sum()
+# Load transaction data and check for essential columns
+try:
+    transaction_data = pd.read_csv("data/transactions.csv")
+    if not {"Transaction Type", "Amount"}.issubset(transaction_data.columns):
+        raise ValueError("CSV file must contain 'Transaction Type' and 'Amount' columns.")
+except Exception as e:
+    st.error(f"Error loading transaction data: {e}")
+    transaction_data = pd.DataFrame(columns=["Transaction Type", "Amount"])
+
+# Initialize balance and UserAccount
+balance = transaction_data["Amount"].sum() if not transaction_data.empty else 0
 user_account = UserAccount(initial_balance=balance)
 
 # Dashboard Layout
 st.title("Expense Manager Dashboard")
+
+# Salary Container
+with st.container():
+    st.subheader("Salary")
+    salary = st.number_input("Enter your monthly salary (₹):", min_value=0.0, step=1000.0)
+    st.write(f"Monthly Salary: ₹{salary:,.2f}")
 
 # Balance Container
 with st.container():
     st.subheader("Total Balance")
     st.write(f"Available Balance: ₹{user_account.balance:,.2f}")
 
-# Salary Container
-with st.container():
-    st.subheader("Salary")
-    salary = 70000  # Default salary; you can make this editable if needed
-    st.write(f"Monthly Salary: ₹{salary:,.2f}")
-
 # Recent Transactions Container
 with st.container():
     st.subheader("Recent Transactions")
     if not transaction_data.empty:
         for idx, row in transaction_data.tail(5).iterrows():
-            transaction_type = row['Transaction Type']
-            amount = row['Amount']
+            transaction_type = row.get('Transaction Type', 'N/A')
+            amount = row.get('Amount', 0.0)
             st.write(f"{transaction_type.capitalize()}: ₹{amount:,.2f}")
             delete_button = st.button("❌", key=f"delete_{idx}")
             if delete_button:
