@@ -4,3 +4,4 @@ pandas
 numpy
 nltk
 matplotlib
+seaborn
