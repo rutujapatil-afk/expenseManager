@@ -18,8 +18,8 @@ from sklearn.preprocessing import LabelEncoder
 # Load Datasets
 @st.cache_data
 def load_data():
-    policy_data = pd.read_csv("insurance_policies_dataset.csv")
-    spending_data = pd.read_csv("transactions.csv")
+    policy_data = pd.read_csv("data\insurance_policies_dataset.csv")
+    spending_data = pd.read_csv("data\transactions.csv")
     return policy_data, spending_data
 
 policy_data, spending_data = load_data()
