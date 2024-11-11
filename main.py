@@ -128,14 +128,17 @@ def expense_dashboard():
 def profile_setup():
     st.title("Setup Your Profile")
 
+    # Profile fields
     first_name = st.text_input("First Name")
     last_name = st.text_input("Last Name")
     gender = st.selectbox("Gender", ["Male", "Female", "Other"])
     age = st.number_input("Age", min_value=0)
     profession = st.text_input("Profession")
 
+    # When the user presses Save Profile
     if st.button("Save Profile"):
         if first_name and last_name and age and profession:
+            # Save profile data to session state
             st.session_state.first_name = first_name
             st.session_state.last_name = last_name
             st.session_state.gender = gender
@@ -143,7 +146,11 @@ def profile_setup():
             st.session_state.profession = profession
             st.success("Profile successfully set up!")
 
-            # Optionally, save these details to a CSV file for persistence
+            # Ensure the data folder exists
+            if not os.path.exists("data"):
+                os.makedirs("data")
+
+            # Save profile data to a CSV file
             profile_data = {
                 "username": st.session_state.username,
                 "first_name": first_name,
@@ -153,16 +160,21 @@ def profile_setup():
                 "profession": profession
             }
 
-            # Append the profile data to a CSV file (or a more suitable database solution in production)
+            # Create a DataFrame for the profile and append it to the CSV
             profile_df = pd.DataFrame([profile_data])
             if not os.path.exists("data/profiles.csv"):
                 profile_df.to_csv("data/profiles.csv", index=False)
             else:
                 profile_df.to_csv("data/profiles.csv", mode="a", header=False, index=False)
 
-            st.experimental_rerun()  # Reload to show the dashboard
+            # Set profile as completed in session state
+            st.session_state.is_profile_set = True
+
+            # Refresh the page to show the dashboard
+            st.experimental_rerun()  # This will reload the page and show the dashboard after profile is set
+
         else:
-            st.error("Please fill in all fields!")
+            st.error("Please fill in all fields!")  # Error if fields are not filled
 
 # Main Function
 def login_signup():
