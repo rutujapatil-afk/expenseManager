@@ -124,13 +124,97 @@ def expense_dashboard():
             st.session_state.clear()
             st.write("Logged out successfully.")
 
+# Profile Setup for First-Time Login
+def profile_setup():
+    st.title("Setup Your Profile")
+
+    first_name = st.text_input("First Name")
+    last_name = st.text_input("Last Name")
+    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+    age = st.number_input("Age", min_value=0)
+    profession = st.text_input("Profession")
+
+    if st.button("Save Profile"):
+        if first_name and last_name and age and profession:
+            st.session_state.first_name = first_name
+            st.session_state.last_name = last_name
+            st.session_state.gender = gender
+            st.session_state.age = age
+            st.session_state.profession = profession
+            st.success("Profile successfully set up!")
+
+            # Optionally, save these details to a CSV file for persistence
+            profile_data = {
+                "username": st.session_state.username,
+                "first_name": first_name,
+                "last_name": last_name,
+                "gender": gender,
+                "age": age,
+                "profession": profession
+            }
+
+            # Append the profile data to a CSV file (or a more suitable database solution in production)
+            profile_df = pd.DataFrame([profile_data])
+            if not os.path.exists("data/profiles.csv"):
+                profile_df.to_csv("data/profiles.csv", index=False)
+            else:
+                profile_df.to_csv("data/profiles.csv", mode="a", header=False, index=False)
+
+            st.experimental_rerun()  # Reload to show the dashboard
+        else:
+            st.error("Please fill in all fields!")
+
 # Main Function
+def login_signup():
+    st.title("Expense Manager Login")
+
+    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
+
+    with tab_login:
+        st.subheader("Login")
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
+        login_button = st.button("Login")
+        
+        if login_button:
+            if authenticate(username, password):
+                st.session_state.logged_in = True
+                st.session_state.username = username
+
+                # Check if the profile is already set up
+                if not os.path.exists("data/profiles.csv") or username not in pd.read_csv("data/profiles.csv")["username"].values:
+                    st.session_state.is_profile_set = False
+                else:
+                    st.session_state.is_profile_set = True
+
+                st.success("Login successful!")
+                st.experimental_rerun()
+            else:
+                st.error("Invalid username or password.")
+                st.session_state.pop("logged_in", None)  # Only clear relevant session key
+                st.session_state.pop("username", None)
+                st.experimental_rerun()
+
+    with tab_signup:
+        st.subheader("Sign Up")
+        new_username = st.text_input("New Username", key="signup_username")
+        new_password = st.text_input("New Password", type="password", key="signup_password")
+        signup_button = st.button("Sign Up")
+        
+        if signup_button:
+            if register_user(new_username, new_password):
+                st.success("Registration successful! Please log in.")
+            else:
+                st.error("Username already taken. Please choose a different one.")
+
 def main():
     if "logged_in" in st.session_state and st.session_state.logged_in:
-        expense_dashboard()
+        if not st.session_state.is_profile_set:
+            profile_setup()  # If profile is not set, prompt the user to set it up
+        else:
+            expense_dashboard()  # Show the expense dashboard after profile is set
     else:
-        st.write("Please log in first.")
-        # Show login/signup forms (your existing logic)
+        login_signup()  # Show the login/signup page
 
 if __name__ == "__main__":
     main()
