@@ -3,10 +3,8 @@ import streamlit as st
 import pandas as pd
 import nltk
 import joblib
-from models import spam_classifier  # Ensure this import is correct
-from models.spam_classifier import UserAccount
-from models import policy_suggestions
-
+from models.spam_classifier import UserAccount  # Import UserAccount from spam_classifier
+from models import spam_classifier, policy_suggestions  # Import spam_classifier and policy_suggestions
 
 # Check if NLTK stopwords are available, and download if needed
 try:
