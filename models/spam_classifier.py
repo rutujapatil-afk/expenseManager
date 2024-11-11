@@ -52,6 +52,7 @@ def preprocess_message(message):
 # Classify message function
 def classify_message(message):
     cleaned = preprocess_message(message)
+    st.write(f"Processed message: {cleaned}")  # Debugging: see the cleaned message
     vector = vectorizer.transform([cleaned]).toarray()
     prediction = model.predict(vector)[0]
     return 'spam' if prediction == 1 else 'ham'
