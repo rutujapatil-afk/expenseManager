@@ -82,9 +82,17 @@ def get_user_input():
 
         submit_button = st.form_submit_button(label='Submit Investment')
         if submit_button:
-            return monthly_investment, investment_duration
-        else:
-            return None, None
+            # Store inputs in session state so they persist
+            st.session_state.monthly_investment = monthly_investment
+            st.session_state.investment_duration = investment_duration
+            st.session_state.input_submitted = True  # Mark that input was submitted
+            st.success("Investment details submitted successfully!")
+            
+    # If no data is in session state, return None
+    if 'monthly_investment' not in st.session_state or 'investment_duration' not in st.session_state:
+        return None, None
+
+    return st.session_state.monthly_investment, st.session_state.investment_duration
 
 # Policy Recommendation
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
@@ -137,12 +145,12 @@ def display_policy_suggestion():
     # Get user input
     monthly_investment, investment_duration = get_user_input()
 
-    if monthly_investment is not None and investment_duration is not None:
-        # After the user submits investment, show the 'Analyze' button
+    # Wait until the input is submitted
+    if st.session_state.get("input_submitted", False):
         if st.button('Analyze'):
             recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
             
             if recommended_policy is not None and suitable_policies is not None:
                 visualize_policy_comparison(suitable_policies)
         else:
-            st.write("Please fill out the investment details and click 'Analyze'.")
+            st.write("Please click 'Analyze' after filling out your investment details.")
