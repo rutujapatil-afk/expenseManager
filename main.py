@@ -4,6 +4,9 @@ import pandas as pd
 import nltk
 import joblib
 from models import spam_classifier  # Ensure this import is correct
+from models.spam_classifier import UserAccount
+from models import policy_suggestions
+
 
 # Check if NLTK stopwords are available, and download if needed
 try:
