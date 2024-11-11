@@ -6,14 +6,14 @@ from models import spam_classifier, policy_suggestions
 import os
 import src.auth as auth  # Importing the authentication module
 
-# Authentication check
+# Authentication check: Ensure that login state is present
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.username = None
 
 # Show login/signup screen if not logged in
 if not st.session_state.logged_in:
-    auth.login_signup()
+    auth.login_signup()  # Show the login/signup form from auth.py
 else:
     # Load the spam model and vectorizer
     spam_model_path = './models/spam_classifier_model.pkl'
@@ -38,8 +38,8 @@ else:
     user_account = UserAccount(initial_balance=balance)
 
     # Dashboard Layout
-    st.title("Expense Manager Dashboard")
-    
+    st.title(f"Welcome, {st.session_state.username}!")  # Greeting the logged-in user
+
     # Salary Container
     with st.container():
         st.subheader("Salary")
@@ -98,4 +98,9 @@ else:
     if st.button("Logout"):
         st.session_state.logged_in = False
         st.session_state.username = None
-        st.experimental_rerun()
+        st.experimental_rerun()  # Rerun the app to reset to the login page
+
+    # Reset Session Button (Optional: Clears session and reruns app)
+    if st.button("Reset Session"):
+        st.session_state.clear()  # Clear all session state
+        st.experimental_rerun()  # Rerun the app to reset the state
