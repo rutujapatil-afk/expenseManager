@@ -29,7 +29,7 @@ def preprocess_data(spending_data, policy_data):
     # Monthly aggregation of spending
     spending_data.columns = spending_data.columns.str.strip()
     spending_data['Date'] = pd.to_datetime(spending_data['Date'])
-    monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount ($)'].sum().reset_index()
+    monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
     monthly_spending.rename(columns={'Amount ($)': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
     monthly_spending['Month'] = monthly_spending['Month'].dt.to_timestamp().dt.year * 100 + monthly_spending['Month'].dt.month
 
