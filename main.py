@@ -32,7 +32,7 @@ else:
     st.write(f"Vectorizer path: {vectorizer_path}")
 
 # Your other imports (assuming these are correctly structured in the `models` directory)
-from models import spam_classifier, policy_suggestion, budgeting_model
+from models import spam_classifier, policy_suggestions
 
 # Load data or mock data
 transaction_data = pd.read_csv("data/transactions.csv")
