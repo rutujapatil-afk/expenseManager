@@ -70,6 +70,7 @@ def train_models(monthly_spending, policy_data):
 
     # Policy model
     X_policy = policy_data[['Policy Type', 'Interest Rate (%)', 'Maturity Period (years)', 'Minimum Investment ($)']]
+
     X_policy = pd.get_dummies(X_policy, drop_first=True)  # Convert categorical data to dummy variables
     y_policy = policy_data['Interest Rate Category']
     X_train_p, X_test_p, y_train_p, y_test_p = train_test_split(X_policy, y_policy, test_size=0.2, random_state=42)
