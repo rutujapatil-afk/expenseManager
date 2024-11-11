@@ -54,7 +54,5 @@ if st.button("Analyze Bank Messages"):
     spam_classifier.display_spam_detector()  # Ensure this method is properly imported from the spam_classifier module
 
 if st.button("Investment Policy Suggestion"):
-    policy_suggestion.display_policy_suggestion()  # Ensure this method is properly imported from the policy_suggestion module
+    policy_suggestions.display_policy_suggestion()  # Ensure this method is properly imported from the policy_suggestion module
 
-if st.button("Budgeting Tool"):
-    budgeting_model.display_budgeting_tool()  # Ensure this method is properly imported from the budgeting_model module
