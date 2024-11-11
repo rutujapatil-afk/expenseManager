@@ -74,8 +74,7 @@ def login_signup():
 # Main Application
 def main_app():
     st.title(f"Welcome, {st.session_state.username}!")
-    # Here you can include the main dashboard, balance, transactions, etc.
-    # Refer to the previous dashboard implementation here
+    # Your main dashboard content goes here...
 
 # Check login status
 if "logged_in" not in st.session_state:
