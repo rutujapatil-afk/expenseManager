@@ -15,16 +15,20 @@ users_file = "data/users.csv"
 
 # Create the users CSV file if it doesn't exist
 if not os.path.exists(users_file):
+    # Create with the correct headers and comma delimiter
     pd.DataFrame(columns=["username", "password"]).to_csv(users_file, index=False)
 
 def load_users():
     """
     Load the users from the CSV file into a pandas DataFrame.
     """
-    users = pd.read_csv(users_file, delimiter='\t')  # Specify tab delimiter
-    print(users.head())  # Debugging statement to check the data
-    return users
-
+    # Assuming the CSV file is comma-separated
+    try:
+        users = pd.read_csv(users_file)  # Load with default comma delimiter
+        return users
+    except Exception as e:
+        st.error(f"Error loading users: {e}")
+        return pd.DataFrame(columns=["username", "password"])
 
 def save_user(username, password):
     """
@@ -32,7 +36,7 @@ def save_user(username, password):
     """
     hashed_password = hash_password(password)
     new_user = pd.DataFrame([[username, hashed_password]], columns=["username", "password"])
-    new_user.to_csv(users_file, mode="a", header=False, index=False)
+    new_user.to_csv(users_file, mode="a", header=False, index=False)  # Append new user data
 
 def authenticate(username, password):
     """
@@ -40,8 +44,13 @@ def authenticate(username, password):
     """
     users = load_users()
     hashed_password = hash_password(password)  # Hash the entered password
-    user = users[(users["username"] == username) & (users["password"] == hashed_password)]
-    return not user.empty
+    # Ensure we only look for matches in the correct columns
+    try:
+        user = users[(users["username"] == username) & (users["password"] == hashed_password)]
+        return not user.empty  # If user found, return True, else False
+    except KeyError:
+        st.error("CSV file is missing required columns 'username' or 'password'.")
+        return False
 
 def register_user(username, password):
     """
@@ -71,17 +80,16 @@ def login_signup():
         
         if login_button:
             if authenticate(username, password):
-            # If login is successful, store session data
+                # If login is successful, store session data
                 st.session_state.logged_in = True
                 st.session_state.username = username
                 st.success("Login successful!")
-                st.experimental_rerun()
+                st.experimental_rerun()  # Rerun the app to refresh the state and show the dashboard
             else:
                 st.error("Invalid username or password.")
                 # Optionally clear session if login fails
                 st.session_state.clear()  # Clear the session state on failure
                 st.experimental_rerun()  # Rerun the app to reset
-
 
     # Sign Up Tab
     with tab_signup:
