@@ -1,1 +1,33 @@
-"__pycache__/" 
+# Python bytecode files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment folder (for Python)
+venv/
+.env/
+*.env
+
+# Streamlit specific folders and files
+.streamlit/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# IDE specific files (for VS Code, PyCharm, etc.)
+.vscode/
+.idea/
+
+# macOS specific files
+.DS_Store
+
+# Windows specific files
+Thumbs.db
+
+# Log files
+*.log
+
+# Configuration and cache files
+*.bak
+*.swp
+*.swo
