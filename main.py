@@ -56,4 +56,4 @@ if st.button("Analyze Bank Messages"):
     spam_classifier.display_spam_detector(user_account)  # Pass the user_account to the function
 
 if st.button("Investment Policy Suggestion"):
-    policy_suggestions.display_policy_suggestion()  # Ensure this method is correctly defined
+    policy_suggestions.display_policy_suggestion()  # Ensure this method is correctly defined in policy_suggestions.py

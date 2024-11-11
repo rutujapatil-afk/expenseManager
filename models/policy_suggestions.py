@@ -1,9 +1,4 @@
-# -- coding: utf-8 --
-"""
-policy_suggestions.py
-
-Streamlit application for policy suggestion based on user spending patterns and investment preferences.
-"""
+# models/policy_suggestions.py
 
 import streamlit as st
 import pandas as pd
@@ -151,8 +146,11 @@ def visualize_policy_comparison(suitable_policies):
     else:
         st.write("No suitable policies to visualize.")
 
-# Main Function to run the app
-if __name__ == "__main__":
+# New function for display_policy_suggestion()
+def display_policy_suggestion():
+    """
+    Display the policy suggestion dashboard.
+    """
     st.title("Policy Suggestion Dashboard")
     st.write("This application suggests investment policies based on your spending and investment preferences.")
     st.write(f"*Spending Model Accuracy*: {acc_spending * 100:.2f}%")
@@ -163,3 +161,4 @@ if __name__ == "__main__":
     
     if recommended_policy is not None and suitable_policies is not None:
         visualize_policy_comparison(suitable_policies)
+
