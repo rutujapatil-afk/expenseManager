@@ -62,18 +62,16 @@ def expense_dashboard():
         
         # Add Expense form
         amount = st.number_input("Amount", min_value=0.0, step=0.01)
-        category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
+        category = st.selectbox("Category", ["Food", "Transport","Shopping","Entertainment","Health","Others"])
         expense_date = st.date_input("Date", value=date.today())
-        
-        # When 'Others' is selected, ask for description
+        description = ""
+
         if category == "Others":
-            description = st.text_input("Describe the transaction")
-        else:
-            description = None
+            description = st.text_input("Enter Description for the Expense")
         
         if st.button("Add Expense"):
             # Save the expense to CSV
-            expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description] if description else [""]})
+            expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
             expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
             
             # Concatenate new expense data to the existing DataFrame
@@ -88,51 +86,29 @@ def expense_dashboard():
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
         st.dataframe(expenses)
 
-        # Option to delete an expense
-        st.subheader("Delete a Transaction")
+        # Option to delete multiple transactions with checkboxes and dustbin icon 🗑️
+        st.subheader("Delete Multiple Transactions")
+        
         if not expenses.empty:
-            expense_to_delete = st.selectbox("Select an expense to delete", expenses["category"])
-            if st.button("Delete Transaction"):
-                expenses = expenses[expenses["category"] != expense_to_delete]
-                expenses.to_csv("data/expenses.csv", index=False)
-                st.success(f"Deleted expense in category: {expense_to_delete}")
+            # Create checkboxes for each transaction
+            delete_buttons = []
+            for index, row in expenses.iterrows():
+                checkbox_label = f"{row['category']} | {row['amount']} | {row['date']} | {row['description']}"
+                delete_buttons.append(st.checkbox(checkbox_label, key=f"checkbox_{index}"))
+
+            # Button to delete selected transactions
+            if st.button("🗑️ Delete Selected Transactions"):
+                selected_indices = [i for i, checked in enumerate(delete_buttons) if checked]
+                if selected_indices:
+                    # Remove the selected transactions
+                    expenses = expenses.drop(selected_indices)
+                    expenses.to_csv("data/expenses.csv", index=False)
+                    st.success(f"Deleted {len(selected_indices)} transaction(s).")
+                    st.experimental_rerun()  # Refresh the page to reflect changes
+                else:
+                    st.warning("No transactions selected for deletion.")
         else:
             st.write("No expenses to delete.")
-
-    # Machine Learning Models Section
-    with st.expander("Machine Learning Models"):
-        # Policy Suggestion Model
-        st.subheader("Policy Suggestion")
-        investment_amount = st.text_input("Investment Amount")
-        investment_duration = st.text_input("Investment Duration (in months)")
-        if st.button("Analyze"):
-            # Placeholder for ML Model
-            st.write(f"Analyzing investment policy for {investment_amount} over {investment_duration} months.")
-        
-        # SMS Classification Model
-        st.subheader("SMS Classifier")
-        sample_sms = st.text_area("Enter SMS")
-        if st.button("Submit"):
-            # Placeholder for SMS classification
-            st.write(f"Classified SMS: {sample_sms}.")
-
-    # User Profile Section
-    with st.expander("Profile"):
-        st.subheader("User Information")
-        st.write(f"First Name: {st.session_state.first_name}")
-        st.write(f"Last Name: {st.session_state.last_name}")
-        st.write(f"Gender: {st.session_state.gender}")
-        st.write(f"Age: {st.session_state.age}")
-        st.write(f"Profession: {st.session_state.profession}")
-        
-        # Profile Picture Upload
-        profile_pic = st.file_uploader("Upload Profile Picture", type=["jpg", "png"])
-        if profile_pic is not None:
-            st.image(profile_pic, width=100)
-
-        if st.button("Logout"):
-            st.session_state.clear()
-            st.write("Logged out successfully.")
 
 # Profile Setup for First-Time Login
 def profile_setup():
