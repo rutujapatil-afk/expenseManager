@@ -6,10 +6,11 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 nltk.download('stopwords')
+import os
+print("Current working directory:", os.getcwd())
+model = joblib.load('models/spam_classifier_model.pkl')
+vectorizer = joblib.load('models/tfidf_vectorizer.pkl')
 
-# Load pre-trained model and vectorizer
-model = joblib.load('spam_classifier_model.pkl')
-vectorizer = joblib.load('tfidf_vectorizer.pkl')
 
 # Initialize stopwords and stemmer
 stop_words = set(stopwords.words('english'))
