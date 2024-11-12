@@ -5,8 +5,7 @@ import os
 from datetime import date
 from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison
 from models.policy_suggestions import policy_data, model_spending
-from models.policy_suggestions import display_investment_policy_recommendation
-
+from models.policy_suggestions import display_policy_suggestion
 
 # from policy_suggestions import display_investment_policy_recommendation
 
@@ -243,6 +242,6 @@ def main():
             expense_dashboard()  # Show the expense dashboard after profile is set
     else:
         login_signup()  # Show the login/signup page
-
+    display_policy_suggestion()
 if __name__ == "__main__":
     main()

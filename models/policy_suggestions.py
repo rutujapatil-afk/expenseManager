@@ -37,10 +37,12 @@ def preprocess_data(spending_data, policy_data):
     le = LabelEncoder()
     policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
 
-    # Replace 'Interest Rate (%)' with 'Expected ROI' for categorization
-    policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'],
-                                         bins=[0, 5, 10, 15, np.inf],
-                                         labels=['Low', 'Medium', 'High', 'Very High'])
+    # Check if 'Expected ROI' column exists and use it for categorization
+    if 'Expected ROI' in policy_data.columns:
+        policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'],bins=[0, 5, 10, 15, np.inf],labels=['Low', 'Medium', 'High', 'Very High'])
+    else:
+        st.error("Column 'Expected ROI' is missing from policy data.")
+        return None, None
 
     # Check for required columns and adjust if needed
     required_columns = ['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']
