@@ -5,6 +5,8 @@ import os
 from datetime import date
 from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison
 from models.policy_suggestions import policy_data, model_spending
+from models.policy_suggestions import display_investment_policy_recommendation
+
 
 # from policy_suggestions import display_investment_policy_recommendation
 
@@ -123,13 +125,14 @@ def expense_dashboard():
     
     if st.session_state.get("input_submitted", False):
         if st.button("Analyze"):
-            # Perform policy recommendation
+        # Perform policy recommendation
             recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-            
+        
             if recommended_policy is not None and suitable_policies is not None:
                 visualize_policy_comparison(suitable_policies)
-        else:
-            st.write("Please click 'Analyze' after filling out your investment details.")
+
+            # Pass user input values to the policy suggestion function
+            display_investment_policy_recommendation(monthly_investment, investment_duration)
 
     # SMS Classification Section (Add your model code here)
     with st.expander("SMS Classification"):
