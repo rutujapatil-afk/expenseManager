@@ -3,7 +3,7 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-#from policy_suggestions import display_investment_policy_recommendation
+# from policy_suggestions import display_investment_policy_recommendation
 
 # User Authentication Functions
 def hash_password(password):
@@ -111,18 +111,22 @@ def expense_dashboard():
         else:
             st.write("No expenses to delete.")
 
-    # Machine Learning Model Section (Add your model code here)
+    # Investment Policy Suggestions Section in expense_dashboard()
     with st.expander("Investment Policy Suggestions (ML Models)"):
         st.subheader("Investment Suggestions")
-        st.write("Here we will provide suggestions based on your expense history.")
-        # Placeholder for the machine learning model's output
-        # You can replace this with the actual ML model integration logic
-        st.write("ML model will suggest personalized investment strategies based on your expenses.")
-
-
-# Inside the main dashboard function
-#   if selected_tab == "Investment Policy Suggestions":
-#        display_investment_policy_recommendation()
+    
+    # Call function to get user input within this expander
+    monthly_investment, investment_duration = get_user_input()
+    
+    if st.session_state.get("input_submitted", False):
+        if st.button("Analyze"):
+            # Perform policy recommendation
+            recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+            
+            if recommended_policy is not None and suitable_policies is not None:
+                visualize_policy_comparison(suitable_policies)
+        else:
+            st.write("Please click 'Analyze' after filling out your investment details.")
 
     # SMS Classification Section (Add your model code here)
     with st.expander("SMS Classification"):
@@ -179,7 +183,6 @@ def profile_setup():
 
             # Refresh the page to show the dashboard
             st.experimental_rerun()  # This will reload the page and show the dashboard after profile is set
-
         else:
             st.error("Please fill in all fields!")  # Error if fields are not filled
 
