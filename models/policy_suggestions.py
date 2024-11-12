@@ -28,17 +28,22 @@ def preprocess_data(spending_data, policy_data):
     monthly_spending.rename(columns={'Amount': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
     monthly_spending['Month'] = monthly_spending['Month'].dt.to_timestamp().dt.year * 100 + monthly_spending['Month'].dt.month
 
+    # Categorize monthly spending
     monthly_spending['Spending Category'] = pd.cut(monthly_spending['Monthly Expense ($)'],
                                                     bins=[0, 500, 1500, np.inf],
                                                     labels=['Low', 'Medium', 'High'])
 
+    # Encoding policy types
     le = LabelEncoder()
     policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
-    policy_data['Interest Rate Category'] = pd.cut(policy_data['Interest Rate (%)'],
-                                                   bins=[0, 5, 10, 15, np.inf],
-                                                   labels=['Low', 'Medium', 'High', 'Very High'])
 
-    required_columns = ['Policy Type', 'Interest Rate (%)', 'Duration (Years)', 'Premium Amount ($)']
+    # Replace 'Interest Rate (%)' with 'Expected ROI' for categorization
+    policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'],
+                                         bins=[0, 5, 10, 15, np.inf],
+                                         labels=['Low', 'Medium', 'High', 'Very High'])
+
+    # Check for required columns and adjust if needed
+    required_columns = ['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']
     missing_columns = [col for col in required_columns if col not in policy_data.columns]
     if missing_columns:
         st.error(f"Missing columns: {', '.join(missing_columns)}")
@@ -57,9 +62,9 @@ def train_models(monthly_spending, policy_data):
     model_spending.fit(X_train_s, y_train_s)
     acc_spending = accuracy_score(y_test_s, model_spending.predict(X_test_s))
 
-    X_policy = policy_data[['Policy Type', 'Interest Rate (%)', 'Duration (Years)', 'Premium Amount ($)']]
+    X_policy = policy_data[['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']]
     X_policy = pd.get_dummies(X_policy, drop_first=True)
-    y_policy = policy_data['Interest Rate Category']
+    y_policy = policy_data['ROI Category']
     X_train_p, X_test_p, y_train_p, y_test_p = train_test_split(X_policy, y_policy, test_size=0.2, random_state=42)
     model_policy = RandomForestClassifier(random_state=42)
     model_policy.fit(X_train_p, y_train_p)
@@ -84,13 +89,11 @@ def get_user_input():
         submit_button = st.form_submit_button(label='Submit Investment')
         
         if submit_button:
-            # Save inputs to session state so that we can access them later
             st.session_state.monthly_investment = monthly_investment
             st.session_state.investment_duration = investment_duration
-            st.session_state.input_submitted = True  # Mark that input was submitted
+            st.session_state.input_submitted = True
             st.success("Investment details submitted successfully!")
 
-    # If no data in session state, return None
     if 'monthly_investment' not in st.session_state or 'investment_duration' not in st.session_state:
         return None, None
 
@@ -103,22 +106,22 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
     st.write(f"Predicted Spending Category: {predicted_category}")
 
     if predicted_category == 'Low':
-        suitable_policies = policy_data[policy_data['Interest Rate Category'] == 'Low']
+        suitable_policies = policy_data[policy_data['ROI Category'] == 'Low']
     elif predicted_category == 'Medium':
-        suitable_policies = policy_data[policy_data['Interest Rate Category'] != 'Very High']
+        suitable_policies = policy_data[policy_data['ROI Category'] != 'Very High']
     else:
-        suitable_policies = policy_data[policy_data['Interest Rate Category'] == 'High']
+        suitable_policies = policy_data[policy_data['ROI Category'] == 'High']
 
     if not suitable_policies.empty:
         suitable_policies = suitable_policies.copy()
-        suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Interest Rate (%)'] / 100)
+        suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
         recommended_policy = suitable_policies.loc[suitable_policies['Potential Return ($)'].idxmax()]
 
         st.write("### Recommended Policy Based on Your Investment:")
-        st.write(recommended_policy[['Policy Name', 'Policy Type', 'Interest Rate (%)', 'Duration (Years)', 'Premium Amount ($)', 'Potential Return ($)']])
+        st.write(recommended_policy[['Policy Name', 'Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment', 'Potential Return ($)']])
 
         st.write("### Reasons for Selection:")
-        st.write(f"1. *Interest Rate*: The selected policy has an interest rate of {recommended_policy['Interest Rate (%)']}%, higher than the average.")
+        st.write(f"1. *Expected ROI*: The selected policy has an expected ROI of {recommended_policy['Expected ROI']}%, which aligns with your goals.")
         st.write(f"2. *Potential Return*: Based on your investment of ${user_investment} over {investment_duration} months, the potential return is ${recommended_policy['Potential Return ($)']:.2f}.")
         st.write(f"3. *Investment Duration*: The maturity period aligns with your investment duration of {investment_duration // 12} years.")
         
@@ -156,4 +159,3 @@ def display_policy_suggestion():
                 visualize_policy_comparison(suitable_policies)
         else:
             st.write("Please click 'Analyze' after filling out your investment details.")
-
