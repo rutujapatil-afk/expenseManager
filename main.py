@@ -7,8 +7,6 @@ from models.policy_suggestions import get_user_input, recommend_policy, visualiz
 from models.policy_suggestions import policy_data, model_spending
 from models.policy_suggestions import display_policy_suggestion
 
-# from policy_suggestions import display_investment_policy_recommendation
-
 # User Authentication Functions
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -56,15 +54,15 @@ def register_user(username, password):
 # Dashboard Functionality
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
-    
+
     # Welcome message
     st.header(f"Welcome, {st.session_state.username}!")
     st.write("This is your dashboard. You can now manage your expenses.")
-    
+
     # Expense Management Section
     with st.expander("Expense Management"):
         st.subheader("Add an Expense")
-        
+
         # Add Expense form
         amount = st.number_input("Amount", min_value=0.0, step=0.01)
         category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
@@ -73,19 +71,19 @@ def expense_dashboard():
 
         if category == "Others":
             description = st.text_input("Enter Description for the Expense")
-        
+
         if st.button("Add Expense"):
             # Save the expense to CSV
             expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
             expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
-            
+
             # Concatenate new expense data to the existing DataFrame
             expenses = pd.concat([expenses, expense_data], ignore_index=True)
-            
+
             # Save the updated expenses to the CSV
             expenses.to_csv("data/expenses.csv", index=False)
             st.success(f"Expense of {amount} in category {category} added on {expense_date}.")
-        
+
         # Show expenses table
         st.subheader("Your Expenses")
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
@@ -93,7 +91,7 @@ def expense_dashboard():
 
         # Option to delete multiple transactions with checkboxes and dustbin icon 🗑️
         st.subheader("Delete Multiple Transactions")
-        
+
         if not expenses.empty:
             # Create checkboxes for each transaction
             delete_buttons = []
@@ -115,25 +113,26 @@ def expense_dashboard():
         else:
             st.write("No expenses to delete.")
 
-    # Investment Policy Suggestions Section in expense_dashboard()
-    with st.expander("Investment Policy Suggestions (ML Models)"):
-        st.subheader("Investment Suggestions")
-    
-    # Call function to get user input within this expander
-    monthly_investment, investment_duration = get_user_input()
-    
-    if st.session_state.get("input_submitted", False):
-        if st.button("Analyze"):
-        # Perform policy recommendation
-            recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-        
-            if recommended_policy is not None and suitable_policies is not None:
-                visualize_policy_comparison(suitable_policies)
+    # Investment Policy Suggestions Section
+    if st.session_state.get("is_profile_set", False):
+        with st.expander("Investment Policy Suggestions (ML Models)"):
+            st.subheader("Investment Suggestions")
 
-            # Pass user input values to the policy suggestion function
-            display_investment_policy_recommendation(monthly_investment, investment_duration)
+            # Call function to get user input within this expander
+            monthly_investment, investment_duration = get_user_input()
 
-    # SMS Classification Section (Add your model code here)
+            if st.session_state.get("input_submitted", False):
+                if st.button("Analyze"):
+                    # Perform policy recommendation
+                    recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+
+                    if recommended_policy is not None and suitable_policies is not None:
+                        visualize_policy_comparison(suitable_policies)
+
+                    # Pass user input values to the policy suggestion function
+                    display_policy_suggestion(monthly_investment, investment_duration)
+
+    # SMS Classification Section
     with st.expander("SMS Classification"):
         st.subheader("SMS Classification")
         st.write("Here we will classify SMS messages to identify financial transactions.")
@@ -243,5 +242,6 @@ def main():
     else:
         login_signup()  # Show the login/signup page
     display_policy_suggestion()
+
 if __name__ == "__main__":
     main()
