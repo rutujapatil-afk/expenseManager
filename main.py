@@ -113,7 +113,7 @@ def expense_dashboard():
         else:
             st.write("No expenses to delete.")
 
-    # Investment Policy Suggestions Section
+    # Investment Policy Suggestions Section (Visible only if profile is set)
     if st.session_state.get("is_profile_set", False):
         with st.expander("Investment Policy Suggestions (ML Models)"):
             st.subheader("Investment Suggestions")
@@ -241,7 +241,6 @@ def main():
             expense_dashboard()  # Show the expense dashboard after profile is set
     else:
         login_signup()  # Show the login/signup page
-    display_policy_suggestion()
 
 if __name__ == "__main__":
     main()
