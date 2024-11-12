@@ -3,7 +3,7 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-
+from policy_suggestions import display_investment_policy_recommendation
 
 # User Authentication Functions
 def hash_password(password):
@@ -121,8 +121,8 @@ def expense_dashboard():
 
 
 # Inside the main dashboard function
-if selected_tab == "Investment Policy Suggestions":
-    display_investment_policy_recommendation()
+    if selected_tab == "Investment Policy Suggestions":
+        display_investment_policy_recommendation()
 
     # SMS Classification Section (Add your model code here)
     with st.expander("SMS Classification"):
