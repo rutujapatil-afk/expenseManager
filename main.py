@@ -3,6 +3,9 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
+from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison
+from models.policy_suggestions import policy_data, model_spending
+
 # from policy_suggestions import display_investment_policy_recommendation
 
 # User Authentication Functions
