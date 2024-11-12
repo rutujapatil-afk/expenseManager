@@ -12,7 +12,7 @@ def hash_password(password):
 # Path to the users CSV file
 users_file = "data/users.csv"
 
-# Create the users CSV file with comma-separated values if it doesn't exist
+# Ensure the users CSV file exists
 if not os.path.exists(users_file):
     pd.DataFrame(columns=["username", "password"]).to_csv(users_file, index=False)
 
@@ -49,14 +49,13 @@ def register_user(username, password):
     save_user(username, password)
     return True
 
-# Dashboard Functionality
+# Expense Dashboard Functionality
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
     
-    # Sidebar menu for tab selection
+    # Sidebar for navigation
     selected_tab = st.sidebar.selectbox("Select an option", ["Dashboard", "Investment Policy Suggestions", "SMS Classification", "Profile"])
 
-    # Expense Management Section
     if selected_tab == "Dashboard":
         st.header(f"Welcome, {st.session_state.username}!")
         st.write("This is your dashboard. You can now manage your expenses.")
@@ -84,27 +83,6 @@ def expense_dashboard():
             expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
             st.dataframe(expenses)
 
-            st.subheader("Delete Multiple Transactions")
-            
-            if not expenses.empty:
-                delete_buttons = []
-                for index, row in expenses.iterrows():
-                    checkbox_label = f"{row['category']} | {row['amount']} | {row['date']} | {row['description']}"
-                    delete_buttons.append(st.checkbox(checkbox_label, key=f"checkbox_{index}"))
-
-                if st.button("🗑️ Delete Selected Transactions"):
-                    selected_indices = [i for i, checked in enumerate(delete_buttons) if checked]
-                    if selected_indices:
-                        expenses = expenses.drop(selected_indices)
-                        expenses.to_csv("data/expenses.csv", index=False)
-                        st.success(f"Deleted {len(selected_indices)} transaction(s).")
-                        st.experimental_rerun()
-                    else:
-                        st.warning("No transactions selected for deletion.")
-            else:
-                st.write("No expenses to delete.")
-
-    # Machine Learning Model Section
     elif selected_tab == "Investment Policy Suggestions":
         with st.expander("Investment Policy Suggestions (ML Models)"):
             st.subheader("Investment Suggestions")
@@ -115,7 +93,6 @@ def expense_dashboard():
         with st.expander("SMS Classification"):
             st.subheader("SMS Classification")
             st.write("Here we will classify SMS messages to identify financial transactions.")
-            st.write("SMS model will categorize messages based on your financial activity.")
 
     elif selected_tab == "Profile":
         st.subheader("User Profile")
@@ -138,16 +115,6 @@ def profile_setup():
 
     if st.button("Save Profile"):
         if first_name and last_name and age and profession:
-            st.session_state.first_name = first_name
-            st.session_state.last_name = last_name
-            st.session_state.gender = gender
-            st.session_state.age = age
-            st.session_state.profession = profession
-            st.success("Profile successfully set up!")
-
-            if not os.path.exists("data"):
-                os.makedirs("data")
-
             profile_data = {
                 "username": st.session_state.username,
                 "first_name": first_name,
@@ -168,7 +135,7 @@ def profile_setup():
         else:
             st.error("Please fill in all fields!")
 
-# Main Function
+# Main Function for Login and Signup
 def login_signup():
     st.title("Expense Manager Login")
 
@@ -190,7 +157,6 @@ def login_signup():
                 else:
                     st.session_state.is_profile_set = True
 
-                st.success("Login successful!")
                 st.experimental_rerun()
             else:
                 st.error("Invalid username or password.")
@@ -207,6 +173,7 @@ def login_signup():
             else:
                 st.error("Username already taken. Please choose a different one.")
 
+# Main Application Entry Point
 def main():
     if "logged_in" in st.session_state and st.session_state.logged_in:
         if not st.session_state.is_profile_set:
