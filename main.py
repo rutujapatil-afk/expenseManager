@@ -130,6 +130,7 @@ def expense_dashboard():
                         visualize_policy_comparison(suitable_policies)
 
                     # Pass user input values to the policy suggestion function
+                    st.session_state['unique_form_id'] = st.session_state.get('unique_form_id', 0) + 1
                     display_policy_suggestion()
 
     # SMS Classification Section
