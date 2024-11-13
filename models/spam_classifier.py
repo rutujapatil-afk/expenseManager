@@ -130,6 +130,7 @@ def display_expense_manager(user_account):
 
             # Update the session state
             st.session_state.user_account = user_account
+            st.success("Transaction added successfully!")
 
 
 # Streamlit display function for SMS classification interface
@@ -162,13 +163,13 @@ def display_spam_detector(user_account):
                     user_account.debit(amount)
                     # Update session state to ensure the transaction is added
                     st.session_state.user_account = user_account  # Save changes to session state
-                    st.write("Transaction added successfully!")
+                    st.success(f"Debit of INR {amount:.2f} added to transaction history!")
             elif transaction_type == 'credit':
                 if st.button(f"Add credit of INR {amount:.2f} to transaction history"):
                     user_account.credit(amount)
                     # Update session state to ensure the transaction is added
                     st.session_state.user_account = user_account  # Save changes to session state
-                    st.write("Transaction added successfully!")
+                    st.success(f"Credit of INR {amount:.2f} added to transaction history!")
 
     # Show balance and transaction history
     st.subheader(user_account.show_balance())
