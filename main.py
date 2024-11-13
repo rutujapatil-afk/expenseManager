@@ -60,15 +60,29 @@ class UserAccount:
     def credit(self, amount):
         self.balance += amount
         self.transactions.append({'type': 'credit', 'amount': amount})
+        self.update_transaction_history("credit", amount)
         st.write(f"Credited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
 
     def debit(self, amount):
         if self.balance >= amount:
             self.balance -= amount
             self.transactions.append({'type': 'debit', 'amount': amount})
+            self.update_transaction_history("debit", amount)
             st.write(f"Debited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
         else:
             st.write("Insufficient balance!")
+
+    def update_transaction_history(self, transaction_type, amount):
+        # Load existing expenses and update
+        expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
+        new_transaction = pd.DataFrame({
+            "amount": [amount],
+            "category": [transaction_type.capitalize()],
+            "date": [str(date.today())],
+            "description": ["Auto-added through SMS Classification" if transaction_type in ["credit", "debit"] else ""]
+        })
+        expenses = pd.concat([expenses, new_transaction], ignore_index=True)
+        expenses.to_csv("data/expenses.csv", index=False)
 
 # Initialize a user account instance
 user_account = UserAccount()
@@ -76,6 +90,9 @@ user_account = UserAccount()
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
 
+    # Display current balance
+    st.header(f"Current Balance: INR {user_account.balance:.2f}")
+    
     # Welcome message
     st.header(f"Welcome, {st.session_state.username}!")
 
@@ -94,6 +111,7 @@ def expense_dashboard():
             expenses = pd.concat([expenses, expense_data], ignore_index=True)
             expenses.to_csv("data/expenses.csv", index=False)
             st.success(f"Expense of {amount} in category {category} added.")
+            user_account.debit(amount)  # Update balance
 
         st.subheader("Your Expenses")
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
