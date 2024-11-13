@@ -55,34 +55,27 @@ def register_user(username, password):
 class UserAccount:
     def __init__(self, initial_balance=10000.0):
         self.balance = initial_balance
-        self.transactions = []  # Store transaction details
+        self.transactions = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
 
-    def credit(self, amount):
+    def credit(self, amount, description="Credit"):
         self.balance += amount
-        self.transactions.append({'type': 'credit', 'amount': amount})
-        self.update_transaction_history("credit", amount)
+        transaction = {"type": "credit", "amount": amount, "category": "Credit", "date": str(date.today()), "description": description}
+        self.transactions = pd.concat([self.transactions, pd.DataFrame([transaction])], ignore_index=True)
+        self.save_transactions()
         st.write(f"Credited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
 
-    def debit(self, amount):
+    def debit(self, amount, description="Debit"):
         if self.balance >= amount:
             self.balance -= amount
-            self.transactions.append({'type': 'debit', 'amount': amount})
-            self.update_transaction_history("debit", amount)
+            transaction = {"type": "debit", "amount": amount, "category": "Debit", "date": str(date.today()), "description": description}
+            self.transactions = pd.concat([self.transactions, pd.DataFrame([transaction])], ignore_index=True)
+            self.save_transactions()
             st.write(f"Debited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
         else:
             st.write("Insufficient balance!")
 
-    def update_transaction_history(self, transaction_type, amount):
-        # Load existing expenses and update
-        expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
-        new_transaction = pd.DataFrame({
-            "amount": [amount],
-            "category": [transaction_type.capitalize()],
-            "date": [str(date.today())],
-            "description": ["Auto-added through SMS Classification" if transaction_type in ["credit", "debit"] else ""]
-        })
-        expenses = pd.concat([expenses, new_transaction], ignore_index=True)
-        expenses.to_csv("data/expenses.csv", index=False)
+    def save_transactions(self):
+        self.transactions.to_csv("data/expenses.csv", index=False)
 
 # Initialize a user account instance
 user_account = UserAccount()
@@ -111,7 +104,7 @@ def expense_dashboard():
             expenses = pd.concat([expenses, expense_data], ignore_index=True)
             expenses.to_csv("data/expenses.csv", index=False)
             st.success(f"Expense of {amount} in category {category} added.")
-            user_account.debit(amount)  # Update balance
+            user_account.debit(amount, description=description if description else category)  # Update balance
 
         st.subheader("Your Expenses")
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
@@ -159,6 +152,7 @@ def expense_dashboard():
                     elif transaction_type == 'credit':
                         user_account.credit(amount)
                         st.success("Transaction credited.")
+                    st.experimental_rerun()
 
 # Profile Setup for First-Time Login
 def profile_setup():
@@ -192,24 +186,27 @@ def login_signup():
         if st.button("Login"):
             if authenticate(username, password):
                 st.session_state.update({"logged_in": True, "username": username})
-                st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values if os.path.exists("data/profiles.csv") else False
-                st.success("Login successful!")
+                st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values
                 st.experimental_rerun()
             else:
-                st.error("Invalid credentials.")
+                st.error("Invalid username or password.")
+
     with tab_signup:
         st.subheader("Sign Up")
         new_username = st.text_input("New Username", key="signup_username")
         new_password = st.text_input("New Password", type="password", key="signup_password")
         if st.button("Sign Up"):
             if register_user(new_username, new_password):
-                st.success("Registration successful! Please log in.")
+                st.success("Registration successful!")
             else:
-                st.error("Username already taken.")
+                st.warning("Username already taken.")
 
 def main():
-    if st.session_state.get("logged_in"):
-        profile_setup() if not st.session_state.get("is_profile_set") else expense_dashboard()
+    if "logged_in" in st.session_state and st.session_state["logged_in"]:
+        if "is_profile_set" in st.session_state and st.session_state["is_profile_set"]:
+            expense_dashboard()
+        else:
+            profile_setup()
     else:
         login_signup()
 
