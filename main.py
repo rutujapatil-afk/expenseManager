@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import hashlib
 import os
-import re
 from datetime import date
 from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
@@ -125,6 +124,7 @@ def expense_dashboard():
     # Investment Policy Suggestions Section
     if st.session_state.get("is_profile_set", False):
         with st.expander("Investment Policy Suggestions (ML Models)"):
+
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
             if st.session_state.get("input_submitted", False) and st.button("Analyze"):
@@ -182,33 +182,30 @@ def login_signup():
     with tab_login:
         st.subheader("Login")
         username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_password")
+        password = st.text_input("Password", type="password")
         if st.button("Login"):
             if authenticate(username, password):
-                st.session_state.update({"logged_in": True, "username": username})
-                st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values
-                st.experimental_rerun()
+                st.session_state.username = username
+                st.success(f"Welcome back, {username}!")
+                expense_dashboard()  # Show expense dashboard after successful login
             else:
                 st.error("Invalid username or password.")
 
     with tab_signup:
         st.subheader("Sign Up")
-        new_username = st.text_input("Username", key="signup_username")
-        new_password = st.text_input("Password", type="password", key="signup_password")
+        new_username = st.text_input("New Username", key="signup_username")
+        new_password = st.text_input("New Password", type="password")
+        confirm_password = st.text_input("Confirm Password", type="password")
         if st.button("Sign Up"):
-            if register_user(new_username, new_password):
-                st.success("Account created! Please log in.")
-            else:
-                st.error("Username already exists. Try a different one.")
+            if new_password == confirm_password:
+                if register_user(new_username, new_password):
+                    st.success("User registered successfully. You can now log in.")
+                else:
+                    st.error("Username already taken.")
 
-# Initialize the application
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
+    if st.session_state.get("is_profile_set", False):
+        expense_dashboard()  # If profile is set, show the dashboard
 
-if st.session_state["logged_in"]:
-    if not st.session_state.get("is_profile_set", False):
-        profile_setup()
-    else:
-        expense_dashboard()
-else:
+# Run the application
+if __name__ == "__main__":
     login_signup()
