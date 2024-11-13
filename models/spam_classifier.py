@@ -87,23 +87,49 @@ class UserAccount:
     def credit(self, amount):
         self.balance += amount
         self.transactions.append({'type': 'credit', 'amount': amount})
-        st.write(f"Credited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
 
     def debit(self, amount):
         if self.balance >= amount:
             self.balance -= amount
             self.transactions.append({'type': 'debit', 'amount': amount})
-            st.write(f"Debited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
         else:
             st.write("Insufficient balance!")
 
     def show_balance(self):
-        st.write(f"Current Balance: INR {self.balance:.2f}")
+        return f"Current Balance: INR {self.balance:.2f}"
 
     def show_transactions(self):
-        st.write("Transaction History:")
+        transaction_history = ""
         for txn in self.transactions:
-            st.write(f"{txn['type'].capitalize()}: INR {txn['amount']:.2f}")
+            transaction_history += f"{txn['type'].capitalize()}: INR {txn['amount']:.2f}\n"
+        return transaction_history
+
+
+# Streamlit display function for the Expense Manager Dashboard
+def display_expense_manager(user_account):
+    st.header("Expense Manager Dashboard")
+    
+    # Display current balance
+    st.subheader(user_account.show_balance())
+    
+    # Show transaction history
+    st.subheader("Transaction History")
+    st.text(user_account.show_transactions())
+    
+    # Allow the user to add a debit or credit manually
+    with st.form("Add Transaction"):
+        transaction_type = st.radio("Select Transaction Type", ["debit", "credit"])
+        amount = st.number_input("Enter Amount", min_value=1.0)
+        submit_button = st.form_submit_button("Add Transaction")
+
+        if submit_button:
+            if transaction_type == "debit":
+                user_account.debit(amount)
+            else:
+                user_account.credit(amount)
+
+            # Update the session state
+            st.session_state.user_account = user_account
 
 
 # Streamlit display function for SMS classification interface
@@ -134,23 +160,37 @@ def display_spam_detector(user_account):
             if transaction_type == 'debit':
                 if st.button(f"Add debit of INR {amount:.2f} to transaction history"):
                     user_account.debit(amount)
-                    # Update session state to ensure persistence
-                    st.session_state.user_account = user_account  # Save the updated user account in session state
+                    st.session_state.user_account = user_account  # Update user account in session state
                     st.write("Transaction added successfully!")
             elif transaction_type == 'credit':
                 if st.button(f"Add credit of INR {amount:.2f} to transaction history"):
                     user_account.credit(amount)
-                    # Update session state to ensure persistence
-                    st.session_state.user_account = user_account  # Save the updated user account in session state
+                    st.session_state.user_account = user_account  # Update user account in session state
                     st.write("Transaction added successfully!")
 
     # Show balance and transaction history
     user_account.show_balance()
     user_account.show_transactions()
 
+
 # Initialize user account and manage session state for persistence
 if 'user_account' not in st.session_state:
     st.session_state.user_account = UserAccount()  # Initialize if not in session state
 
-# Display the SMS classification interface
-display_spam_detector(st.session_state.user_account)
+# Check if the user is logged in (for demonstration, we assume a basic login state)
+if 'logged_in' not in st.session_state or not st.session_state.logged_in:
+    # User login interface (simple version)
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Log In"):
+        if username == "admin" and password == "password":
+            st.session_state.logged_in = True
+            st.success("Login successful!")
+        else:
+            st.error("Invalid credentials")
+else:
+    st.write("Welcome to the Expense Manager Dashboard!")
+    # Show Expense Manager and SMS Classification after login
+    display_expense_manager(st.session_state.user_account)
+    display_spam_detector(st.session_state.user_account)
