@@ -1,16 +1,15 @@
-import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import streamlit as st
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 
 # Load Datasets
-@st.cache_resource  # Using cache_resource for larger datasets
+@st.cache_data
 def load_data():
+    # Load policy and spending data
     policy_data = pd.read_csv("data/insurance_policies_dataset.csv")
     spending_data = pd.read_csv("data/transactions.csv")
     return policy_data, spending_data
@@ -19,8 +18,8 @@ policy_data, spending_data = load_data()
 
 # Data Preprocessing
 def preprocess_data(spending_data, policy_data):
-    spending_data.columns = spending_data.columns.str.strip()  # Ensure no extra spaces in column names
-    spending_data['Date'] = pd.to_datetime(spending_data['Date'], errors='coerce')  # Handle errors if any in date parsing
+    spending_data.columns = spending_data.columns.str.strip()
+    spending_data['Date'] = pd.to_datetime(spending_data['Date'])
     monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
     monthly_spending.rename(columns={'Amount': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
     monthly_spending['Month'] = monthly_spending['Month'].dt.to_timestamp().dt.year * 100 + monthly_spending['Month'].dt.month
@@ -55,8 +54,6 @@ monthly_spending, policy_data = preprocess_data(spending_data, policy_data)
 
 # Train Models
 def train_models(monthly_spending, policy_data):
-    # Ensure no NaN values in the data before model training
-    monthly_spending = monthly_spending.dropna()
     X_spending = monthly_spending[['Month']]
     y_spending = monthly_spending['Spending Category']
     X_train_s, X_test_s, y_train_s, y_test_s = train_test_split(X_spending, y_spending, test_size=0.2, random_state=42)
@@ -65,7 +62,7 @@ def train_models(monthly_spending, policy_data):
     acc_spending = accuracy_score(y_test_s, model_spending.predict(X_test_s))
 
     X_policy = policy_data[['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']]
-    X_policy = pd.get_dummies(X_policy, drop_first=True)  # One-hot encoding for categorical columns
+    X_policy = pd.get_dummies(X_policy, drop_first=True)
     y_policy = policy_data['ROI Category']
     X_train_p, X_test_p, y_train_p, y_test_p = train_test_split(X_policy, y_policy, test_size=0.2, random_state=42)
     model_policy = RandomForestClassifier(random_state=42)
@@ -97,10 +94,6 @@ def get_user_input():
 
 # Policy Recommendation
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
-    if user_investment is None or investment_duration is None:
-        st.error("Invalid input, please enter valid values for investment details.")
-        return None, None
-
     user_spending = np.array([[user_investment]])
     predicted_category = spending_model.predict(user_spending)[0]
     st.write(f"Predicted Spending Category: {predicted_category}")
@@ -212,3 +205,4 @@ def display_dashboard():
 
 # Run the dashboard
 display_dashboard()
+
