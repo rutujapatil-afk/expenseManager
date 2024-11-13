@@ -54,10 +54,8 @@ def classify_message(message):
     return 'spam' if prediction == 1 else 'ham'
 
 # Extract transaction details function
+# Extract transaction details function
 def extract_transaction_details(message):
-    """
-    Extract transaction type (credit or debit) and amount from a financial SMS.
-    """
     if credit_pattern.search(message):
         transaction_type = 'credit'
     elif debit_pattern.search(message):
@@ -65,8 +63,13 @@ def extract_transaction_details(message):
     else:
         transaction_type = None
 
+    # Update regex to handle the amount format more accurately
     amount_match = amount_pattern.search(message)
-    amount = float(amount_match.group(1).replace(',', '')) if amount_match else 0.0
+    if amount_match:
+        amount_str = amount_match.group(1)
+        amount = float(amount_str.replace(',', '').strip())  # Remove commas and any extra spaces
+    else:
+        amount = 0.0
 
     return transaction_type, amount
 
