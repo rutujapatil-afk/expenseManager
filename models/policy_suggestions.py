@@ -135,13 +135,36 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
 # Visualization
 def visualize_policy_comparison(suitable_policies):
     if suitable_policies is not None and not suitable_policies.empty:
+        # Filter to show only the top 5 policies based on Potential Return
+        top_policies = suitable_policies.nlargest(5, 'Potential Return ($)')
+
+        # Set up the plot
         plt.figure(figsize=(10, 6))
-        sns.barplot(data=suitable_policies, x='Policy Name', y='Potential Return ($)', palette='viridis')
-        plt.xticks(rotation=45)
-        plt.title("Potential Return Comparison of Suitable Policies")
+        sns.set_style("whitegrid")
+        
+        # Plot horizontal bar chart for top 5 policies
+        bar_plot = sns.barplot(
+            data=top_policies,
+            y='Policy Name',
+            x='Potential Return ($)',
+            palette='viridis',
+            edgecolor='black'
+        )
+        
+        # Adding labels and customizing the plot
+        plt.title("Top 5 Investment Policies by Potential Return", fontsize=16, weight='bold')
+        plt.xlabel("Potential Return ($)", fontsize=14)
+        plt.ylabel("Policy Name", fontsize=14)
+
+        # Add value labels to each bar
+        for index, value in enumerate(top_policies['Potential Return ($)']):
+            bar_plot.text(value, index, f'${value:,.2f}', color='black', va="center")
+
+        # Display the plot in Streamlit
         st.pyplot(plt)
     else:
         st.write("No suitable policies to visualize.")
+
 
 def display_policy_suggestion():
     """
