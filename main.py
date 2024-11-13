@@ -79,6 +79,7 @@ class UserAccount:
 # Initialize a user account instance
 user_account = UserAccount()
 
+# Function to show the expense dashboard
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
 
@@ -122,9 +123,8 @@ def expense_dashboard():
                     st.experimental_rerun()
 
     # Investment Policy Suggestions Section
-    if st.session_state.get("is_profile_set", False):
+    if st.session_state.get("is_profile_set", False):  # Only show this if profile is set
         with st.expander("Investment Policy Suggestions (ML Models)"):
-
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
             if st.session_state.get("input_submitted", False) and st.button("Analyze"):
@@ -177,35 +177,37 @@ def profile_setup():
 
 # Main Function
 def login_signup():
-    st.title("Expense Manager Login")
-    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
-    with tab_login:
-        st.subheader("Login")
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password")
-        if st.button("Login"):
-            if authenticate(username, password):
-                st.session_state.username = username
-                st.success(f"Welcome back, {username}!")
-                expense_dashboard()  # Show expense dashboard after successful login
-            else:
-                st.error("Invalid username or password.")
+    if "username" in st.session_state and st.session_state["username"]:
+        if st.session_state.get("is_profile_set", False):
+            expense_dashboard()
+        else:
+            profile_setup()
+    else:
+        st.title("Expense Manager Login")
+        tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
 
-    with tab_signup:
-        st.subheader("Sign Up")
-        new_username = st.text_input("New Username", key="signup_username")
-        new_password = st.text_input("New Password", type="password")
-        confirm_password = st.text_input("Confirm Password", type="password")
-        if st.button("Sign Up"):
-            if new_password == confirm_password:
-                if register_user(new_username, new_password):
-                    st.success("User registered successfully. You can now log in.")
+        with tab_login:
+            st.subheader("Login")
+            username = st.text_input("Username", key="login_username")
+            password = st.text_input("Password", type="password")
+            if st.button("Login"):
+                if authenticate(username, password):
+                    st.session_state.username = username
+                    st.session_state["is_logged_in"] = True
+                    st.session_state["input_submitted"] = False
+                    st.success(f"Welcome back, {username}!")
+                    expense_dashboard()
                 else:
-                    st.error("Username already taken.")
+                    st.error("Invalid username or password.")
 
-    if st.session_state.get("is_profile_set", False):
-        expense_dashboard()  # If profile is set, show the dashboard
-
-# Run the application
-if __name__ == "__main__":
-    login_signup()
+        with tab_signup:
+            st.subheader("Sign Up")
+            new_username = st.text_input("New Username", key="signup_username")
+            new_password = st.text_input("New Password", type="password")
+            confirm_password = st.text_input("Confirm Password", type="password")
+            if st.button("Sign Up"):
+                if new_password == confirm_password:
+                    if register_user(new_username, new_password):
+                        st.success("User registered successfully. You can now log in.")
+                    else:
+                        st.error("Username already taken.")
