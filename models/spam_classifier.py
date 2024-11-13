@@ -28,9 +28,9 @@ else:
 stop_words = set(stopwords.words('english'))
 ps = PorterStemmer()
 
-# Improved regular expressions for transaction detection
-credit_pattern = re.compile(r'credited|deposit|credited to your account|cr|credit', re.IGNORECASE)
-debit_pattern = re.compile(r'debited|withdrawal|debited from your account|dr|debit', re.IGNORECASE)
+# Regular expressions for transaction detection
+credit_pattern = re.compile(r'credited|deposit|credited to your account|cr', re.IGNORECASE)
+debit_pattern = re.compile(r'debited|withdrawal|debited from your account|dr', re.IGNORECASE)
 amount_pattern = re.compile(r'INR\s?([\d,]+\.\d{1,2})')
 
 # Preprocess message function
@@ -160,17 +160,20 @@ def display_spam_detector(user_account):
             if transaction_type == 'debit':
                 if st.button(f"Add debit of INR {amount:.2f} to transaction history"):
                     user_account.debit(amount)
-                    st.session_state.user_account = user_account  # Update user account in session state
+                    # Update session state to ensure the transaction is added
+                    st.session_state.user_account = user_account  # Save changes to session state
                     st.write("Transaction added successfully!")
             elif transaction_type == 'credit':
                 if st.button(f"Add credit of INR {amount:.2f} to transaction history"):
                     user_account.credit(amount)
-                    st.session_state.user_account = user_account  # Update user account in session state
+                    # Update session state to ensure the transaction is added
+                    st.session_state.user_account = user_account  # Save changes to session state
                     st.write("Transaction added successfully!")
 
     # Show balance and transaction history
-    user_account.show_balance()
-    user_account.show_transactions()
+    st.subheader(user_account.show_balance())
+    st.subheader("Transaction History")
+    st.text(user_account.show_transactions())
 
 
 # Initialize user account and manage session state for persistence
