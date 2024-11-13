@@ -18,15 +18,16 @@ def load_data():
         policy_data = pd.read_csv("data/insurance_policies_dataset.csv")
         spending_data = pd.read_csv("data/transactions.csv")
         return policy_data, spending_data
-    except FileNotFoundError:
-        st.error("CSV files not found in the specified path.")
+    except FileNotFoundError as e:
+        st.error(f"Error loading data: {e}")
         return None, None
 
 policy_data, spending_data = load_data()
 
-# Data Preprocessing
+# Data Preprocessing with Debugging
 def preprocess_data(spending_data, policy_data):
     if spending_data is None or policy_data is None:
+        st.error("Spending or policy data is missing.")
         return None, None
     
     spending_data.columns = spending_data.columns.str.strip()
@@ -48,7 +49,7 @@ def preprocess_data(spending_data, policy_data):
 
     # Check if 'Expected ROI' column exists and use it for categorization
     if 'Expected ROI' in policy_data.columns:
-        policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'],bins=[0, 5, 10, 15, np.inf],labels=['Low', 'Medium', 'High', 'Very High'])
+        policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'], bins=[0, 5, 10, 15, np.inf], labels=['Low', 'Medium', 'High', 'Very High'])
     else:
         st.error("Column 'Expected ROI' is missing from policy data.")
         return None, None
@@ -60,16 +61,16 @@ def preprocess_data(spending_data, policy_data):
         st.error(f"Missing columns: {', '.join(missing_columns)}")
         return None, None
 
+    st.write(f"Monthly Spending Data Shape: {monthly_spending.shape}")
+    st.write(f"Policy Data Shape: {policy_data.shape}")
+    
     return monthly_spending, policy_data
 
 monthly_spending, policy_data = preprocess_data(spending_data, policy_data)
 
-# Train the models
+# Train the models with Debugging
 def train_models(monthly_spending, policy_data):
-    if monthly_spending is None or policy_data is None:
-        return None, None, None, None
-
-    # Spending model
+    # Train spending model
     X_spending = monthly_spending[['Month']]
     y_spending = monthly_spending['Spending Category']
     X_train_s, X_test_s, y_train_s, y_test_s = train_test_split(X_spending, y_spending, test_size=0.2, random_state=42)
@@ -77,7 +78,7 @@ def train_models(monthly_spending, policy_data):
     model_spending.fit(X_train_s, y_train_s)
     acc_spending = accuracy_score(y_test_s, model_spending.predict(X_test_s))
 
-    # Policy model
+    # Train policy model
     X_policy = policy_data[['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']]
     X_policy = pd.get_dummies(X_policy, drop_first=True)
     y_policy = policy_data['ROI Category']
@@ -86,11 +87,14 @@ def train_models(monthly_spending, policy_data):
     model_policy.fit(X_train_p, y_train_p)
     acc_policy = accuracy_score(y_test_p, model_policy.predict(X_test_p))
 
+    st.write(f"Spending Model Accuracy: {acc_spending * 100:.2f}%")
+    st.write(f"Policy Model Accuracy: {acc_policy * 100:.2f}%")
+
     return model_spending, model_policy, acc_spending, acc_policy
 
 model_spending, model_policy, acc_spending, acc_policy = train_models(monthly_spending, policy_data)
 
-# User Input for investment
+# User Input for investment with Debugging
 def get_user_input():
     """
     Get the user input for monthly investment and investment duration.
@@ -111,8 +115,10 @@ def get_user_input():
             st.success("Investment details submitted successfully!")
 
     if 'monthly_investment' not in st.session_state or 'investment_duration' not in st.session_state:
+        st.write("Investment data not submitted yet.")
         return None, None
 
+    st.write(f"User Input - Monthly Investment: ${st.session_state.monthly_investment}, Duration: {st.session_state.investment_duration} months")
     return st.session_state.monthly_investment, st.session_state.investment_duration
 
 # Policy Recommendation
@@ -131,6 +137,11 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         suitable_policies = policy_data[policy_data['ROI Category'] != 'Very High']
     else:
         suitable_policies = policy_data[policy_data['ROI Category'] == 'High']
+
+    if suitable_policies.empty:
+        st.write("No suitable policies found for your spending category.")
+    else:
+        st.write(f"Found {len(suitable_policies)} suitable policies.")
 
     if not suitable_policies.empty:
         suitable_policies = suitable_policies.copy()
@@ -154,7 +165,7 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
 def visualize_policy_comparison(suitable_policies):
     if suitable_policies is not None and not suitable_policies.empty:
         # Filter to show only the top 5 policies based on Potential Return
-        top_policies = suitable_policies.nlargest(min(5, len(suitable_policies)), 'Potential Return ($)')
+        top_policies = suitable_policies.nlargest(5, 'Potential Return ($)')
 
         # Set up the plot
         plt.figure(figsize=(10, 6))
@@ -176,31 +187,26 @@ def visualize_policy_comparison(suitable_policies):
 
         # Add value labels to each bar
         for index, value in enumerate(top_policies['Potential Return ($)']):
-            bar_plot.text(value, index, f'${value:,.2f}', color='black', va="center")
+            bar_plot.text(value, index, f'${value:,.2f}', color='black', ha="left", va="center")
 
-        # Display the plot in Streamlit
         st.pyplot(plt)
-    else:
-        st.write("No suitable policies to visualize.")
 
-# Display the policy suggestion
-def display_policy_suggestion():
-    """
-    Display the policy suggestion based on the user input
-    """
-    st.title("Investment Policy Suggestion")
-
-    # Get user input
-    monthly_investment, investment_duration = get_user_input()
-    if monthly_investment is not None and investment_duration is not None:
-        recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-        if recommended_policy is not None:
-            visualize_policy_comparison(suitable_policies)
-
-# Main function
+# Main Function
 def main():
-    st.sidebar.title("Expense Manager")
-    display_policy_suggestion()
+    if policy_data is None or spending_data is None:
+        st.error("Data could not be loaded. Please check the dataset.")
+        return
+    
+    # Get user input for investment
+    user_investment, investment_duration = get_user_input()
+    if user_investment is None or investment_duration is None:
+        return
+
+    # Get recommendations based on user input
+    recommended_policy, suitable_policies = recommend_policy(user_investment, investment_duration, policy_data, model_spending)
+
+    # Visualize policy comparison
+    visualize_policy_comparison(suitable_policies)
 
 if __name__ == "__main__":
     main()
