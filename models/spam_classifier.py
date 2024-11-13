@@ -73,17 +73,26 @@ def extract_transaction_details(message):
 
 # Display function for Streamlit
 def display_spam_detector(user_account):
-    st.header("Bank Message Analysis")
+    st.header("SMS Classification")
+    
+    # Introductory message
+    st.write("Here we will classify SMS messages to identify financial transactions.")
+    st.write("The SMS model will categorize messages based on your financial activity.")
 
     # Get message input from user
     message = st.text_area("Paste your bank message here")
+    
+    # Analysis button
     if st.button("Analyze"):
         label = classify_message(message)
+        
         if label == 'spam':
-            st.write("This message appears to be spam.")
+            st.write("This message appears to be spam and will not be processed further.")
         else:
             st.write("Message is classified as non-spam.")
             transaction_type, amount = extract_transaction_details(message)
+            
+            # Process credit and debit transactions
             if transaction_type == 'debit':
                 if st.button(f"Add debit of INR {amount:.2f} to transaction history"):
                     user_account.debit(amount)
