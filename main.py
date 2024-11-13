@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import hashlib
+import logging
 import os
 from datetime import date
 from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, display_policy_suggestion
@@ -121,15 +122,26 @@ def expense_dashboard():
 
             if st.session_state.get("input_submitted", False):
                 if st.button("Analyze"):
-                    # Perform policy recommendation
-                    recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+                    try:
+                        # Check if policy_data and model_spending are defined
+                        if 'policy_data' not in globals() or 'model_spending' not in globals():
+                            raise ValueError("Required data for policy recommendation is missing.")
+                        
+                        # Perform policy recommendation
+                        recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
 
-                    if recommended_policy is not None and suitable_policies is not None:
-                        visualize_policy_comparison(suitable_policies)
+                        if recommended_policy is not None and suitable_policies is not None:
+                            # Visualize the comparison of policies
+                            visualize_policy_comparison(suitable_policies)
 
-                    # Pass user input values to the policy suggestion function
-                    st.session_state['unique_form_id'] = st.session_state.get('unique_form_id', 0) + 1
-                    display_policy_suggestion()
+                        # Pass user input values to the policy suggestion function
+                        st.session_state['unique_form_id'] = st.session_state.get('unique_form_id', 0) + 1
+                        display_policy_suggestion()
+
+                    except Exception as e:
+                        logging.error(f"Error during policy recommendation: {e}")
+                        st.error("An error occurred while recommending policies. Please try again.")
+                        st.write(f"Error details: {str(e)}")
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
