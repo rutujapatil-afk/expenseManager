@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import hashlib
 import os
+import re
 from datetime import date
-from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison
-from models.policy_suggestions import policy_data, model_spending
-from models.policy_suggestions import display_policy_suggestion
+from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
+from models.sms_classifier import classify_message, extract_transaction_details
 
 # User Authentication Functions
 def hash_password(password):
@@ -14,7 +14,7 @@ def hash_password(password):
 # Path to the users CSV file
 users_file = "data/users.csv"
 
-# Create the users CSV file with comma-separated values if it doesn't exist
+# Create the users CSV file if it doesn't exist
 if not os.path.exists(users_file):
     pd.DataFrame(columns=["username", "password"]).to_csv(users_file, index=False)
 
@@ -52,195 +52,148 @@ def register_user(username, password):
     return True
 
 # Dashboard Functionality
+class UserAccount:
+    def __init__(self, initial_balance=10000.0):
+        self.balance = initial_balance
+        self.transactions = []  # Store transaction details
+
+    def credit(self, amount):
+        self.balance += amount
+        self.transactions.append({'type': 'credit', 'amount': amount})
+        st.write(f"Credited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
+
+    def debit(self, amount):
+        if self.balance >= amount:
+            self.balance -= amount
+            self.transactions.append({'type': 'debit', 'amount': amount})
+            st.write(f"Debited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
+        else:
+            st.write("Insufficient balance!")
+
+# Initialize a user account instance
+user_account = UserAccount()
+
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
 
     # Welcome message
     st.header(f"Welcome, {st.session_state.username}!")
-    st.write("This is your dashboard. You can now manage your expenses.")
 
     # Expense Management Section
     with st.expander("Expense Management"):
         st.subheader("Add an Expense")
 
-        # Add Expense form
         amount = st.number_input("Amount", min_value=0.0, step=0.01)
         category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
         expense_date = st.date_input("Date", value=date.today())
-        description = ""
-
-        if category == "Others":
-            description = st.text_input("Enter Description for the Expense")
+        description = st.text_input("Enter Description", "") if category == "Others" else ""
 
         if st.button("Add Expense"):
-            # Save the expense to CSV
             expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
             expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
-
-            # Concatenate new expense data to the existing DataFrame
             expenses = pd.concat([expenses, expense_data], ignore_index=True)
-
-            # Save the updated expenses to the CSV
             expenses.to_csv("data/expenses.csv", index=False)
-            st.success(f"Expense of {amount} in category {category} added on {expense_date}.")
+            st.success(f"Expense of {amount} in category {category} added.")
 
-        # Show expenses table
         st.subheader("Your Expenses")
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
         st.dataframe(expenses)
 
-        # Option to delete multiple transactions with checkboxes and dustbin icon 🗑️
-        st.subheader("Delete Multiple Transactions")
-
+        # Deletion option for multiple transactions
         if not expenses.empty:
-            # Create checkboxes for each transaction
-            delete_buttons = []
-            for index, row in expenses.iterrows():
-                checkbox_label = f"{row['category']} | {row['amount']} | {row['date']} | {row['description']}"
-                delete_buttons.append(st.checkbox(checkbox_label, key=f"checkbox_{index}"))
-
-            # Button to delete selected transactions
+            st.subheader("Delete Multiple Transactions")
+            delete_buttons = [st.checkbox(f"{row['category']} | {row['amount']} | {row['date']} | {row['description']}", key=f"checkbox_{index}") for index, row in expenses.iterrows()]
             if st.button("🗑️ Delete Selected Transactions"):
                 selected_indices = [i for i, checked in enumerate(delete_buttons) if checked]
                 if selected_indices:
-                    # Remove the selected transactions
                     expenses = expenses.drop(selected_indices)
                     expenses.to_csv("data/expenses.csv", index=False)
-                    st.success(f"Deleted {len(selected_indices)} transaction(s).")
-                    st.experimental_rerun()  # Refresh the page to reflect changes
-                else:
-                    st.warning("No transactions selected for deletion.")
-        else:
-            st.write("No expenses to delete.")
+                    st.success("Selected transactions deleted.")
+                    st.experimental_rerun()
 
-    # Investment Policy Suggestions Section (Visible only if profile is set)
+    # Investment Policy Suggestions Section
     if st.session_state.get("is_profile_set", False):
         with st.expander("Investment Policy Suggestions (ML Models)"):
             st.subheader("Investment Suggestions")
-
-            # Call function to get user input within this expander
             monthly_investment, investment_duration = get_user_input()
-
-            if st.session_state.get("input_submitted", False):
-                if st.button("Analyze"):
-                    # Perform policy recommendation
-                    recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-
-                    if recommended_policy is not None and suitable_policies is not None:
-                        visualize_policy_comparison(suitable_policies)
-
-                    # Pass user input values to the policy suggestion function
-                    display_policy_suggestion(monthly_investment, investment_duration)
+            if st.session_state.get("input_submitted", False) and st.button("Analyze"):
+                recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+                if recommended_policy is not None and suitable_policies is not None:
+                    visualize_policy_comparison(suitable_policies)
+                display_policy_suggestion(monthly_investment, investment_duration)
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
         st.subheader("SMS Classification")
-        st.write("Here we will classify SMS messages to identify financial transactions.")
-        # Placeholder for the SMS classification model logic
-        st.write("SMS model will categorize messages based on your financial activity.")
+        message = st.text_area("Paste your bank message here", key="sms_input")
+        if st.button("Analyze"):
+            label = classify_message(message)
+            if label == 'spam':
+                st.write("This message appears to be spam.")
+            else:
+                st.write("Non-spam message detected.")
+                transaction_type, amount = extract_transaction_details(message)
+                if transaction_type:
+                    st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
+                    if transaction_type == 'debit' and st.button(f"Add debit of INR {amount:.2f} to transaction history"):
+                        user_account.debit(amount)
+                        st.success("Transaction added.")
+                    elif transaction_type == 'credit':
+                        user_account.credit(amount)
+                        st.success("Transaction credited.")
 
 # Profile Setup for First-Time Login
 def profile_setup():
     st.title("Setup Your Profile")
-
-    # Profile fields
     first_name = st.text_input("First Name")
     last_name = st.text_input("Last Name")
     gender = st.selectbox("Gender", ["Male", "Female", "Other"])
     age = st.number_input("Age", min_value=0)
     profession = st.text_input("Profession")
-
-    # When the user presses Save Profile
     if st.button("Save Profile"):
         if first_name and last_name and age and profession:
-            # Save profile data to session state
-            st.session_state.first_name = first_name
-            st.session_state.last_name = last_name
-            st.session_state.gender = gender
-            st.session_state.age = age
-            st.session_state.profession = profession
-            st.success("Profile successfully set up!")
-
-            # Ensure the data folder exists
-            if not os.path.exists("data"):
-                os.makedirs("data")
-
-            # Save profile data to a CSV file
-            profile_data = {
-                "username": st.session_state.username,
-                "first_name": first_name,
-                "last_name": last_name,
-                "gender": gender,
-                "age": age,
-                "profession": profession
-            }
-
-            # Create a DataFrame for the profile and append it to the CSV
-            profile_df = pd.DataFrame([profile_data])
+            st.session_state.update({"first_name": first_name, "last_name": last_name, "gender": gender, "age": age, "profession": profession, "is_profile_set": True})
+            profile_data = pd.DataFrame([{"username": st.session_state.username, "first_name": first_name, "last_name": last_name, "gender": gender, "age": age, "profession": profession}])
             if not os.path.exists("data/profiles.csv"):
-                profile_df.to_csv("data/profiles.csv", index=False)
+                profile_data.to_csv("data/profiles.csv", index=False)
             else:
-                profile_df.to_csv("data/profiles.csv", mode="a", header=False, index=False)
-
-            # Set profile as completed in session state
-            st.session_state.is_profile_set = True
-
-            # Refresh the page to show the dashboard
-            st.experimental_rerun()  # This will reload the page and show the dashboard after profile is set
+                profile_data.to_csv("data/profiles.csv", mode="a", header=False, index=False)
+            st.success("Profile saved!")
+            st.experimental_rerun()
         else:
-            st.error("Please fill in all fields!")  # Error if fields are not filled
+            st.error("Please complete all fields.")
 
 # Main Function
 def login_signup():
     st.title("Expense Manager Login")
-
     tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
-
     with tab_login:
         st.subheader("Login")
         username = st.text_input("Username", key="login_username")
         password = st.text_input("Password", type="password", key="login_password")
-        login_button = st.button("Login")
-        
-        if login_button:
+        if st.button("Login"):
             if authenticate(username, password):
-                st.session_state.logged_in = True
-                st.session_state.username = username
-
-                # Check if the profile is already set up
-                if not os.path.exists("data/profiles.csv") or username not in pd.read_csv("data/profiles.csv")["username"].values:
-                    st.session_state.is_profile_set = False
-                else:
-                    st.session_state.is_profile_set = True
-
+                st.session_state.update({"logged_in": True, "username": username})
+                st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values if os.path.exists("data/profiles.csv") else False
                 st.success("Login successful!")
                 st.experimental_rerun()
             else:
-                st.error("Invalid username or password.")
-                st.session_state.pop("logged_in", None)  # Only clear relevant session key
-                st.session_state.pop("username", None)
-                st.experimental_rerun()
-
+                st.error("Invalid credentials.")
     with tab_signup:
         st.subheader("Sign Up")
         new_username = st.text_input("New Username", key="signup_username")
         new_password = st.text_input("New Password", type="password", key="signup_password")
-        signup_button = st.button("Sign Up")
-        
-        if signup_button:
+        if st.button("Sign Up"):
             if register_user(new_username, new_password):
                 st.success("Registration successful! Please log in.")
             else:
-                st.error("Username already taken. Please choose a different one.")
+                st.error("Username already taken.")
 
 def main():
-    if "logged_in" in st.session_state and st.session_state.logged_in:
-        if not st.session_state.is_profile_set:
-            profile_setup()  # If profile is not set, prompt the user to set it up
-        else:
-            expense_dashboard()  # Show the expense dashboard after profile is set
+    if st.session_state.get("logged_in"):
+        profile_setup() if not st.session_state.get("is_profile_set") else expense_dashboard()
     else:
-        login_signup()  # Show the login/signup page
+        login_signup()
 
 if __name__ == "__main__":
     main()
