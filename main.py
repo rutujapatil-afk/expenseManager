@@ -193,22 +193,22 @@ def login_signup():
 
     with tab_signup:
         st.subheader("Sign Up")
-        new_username = st.text_input("New Username", key="signup_username")
-        new_password = st.text_input("New Password", type="password", key="signup_password")
+        new_username = st.text_input("Username", key="signup_username")
+        new_password = st.text_input("Password", type="password", key="signup_password")
         if st.button("Sign Up"):
             if register_user(new_username, new_password):
-                st.success("Registration successful!")
+                st.success("Account created! Please log in.")
             else:
-                st.warning("Username already taken.")
+                st.error("Username already exists. Try a different one.")
 
-def main():
-    if "logged_in" in st.session_state and st.session_state["logged_in"]:
-        if "is_profile_set" in st.session_state and st.session_state["is_profile_set"]:
-            expense_dashboard()
-        else:
-            profile_setup()
+# Initialize the application
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+
+if st.session_state["logged_in"]:
+    if not st.session_state.get("is_profile_set", False):
+        profile_setup()
     else:
-        login_signup()
-
-if __name__ == "__main__":
-    main()
+        expense_dashboard()
+else:
+    login_signup()
