@@ -177,41 +177,38 @@ def profile_setup():
 
 # Main Function
 def login_signup():
-    if "username" not in st.session_state:
-        st.session_state.username = None
-        st.session_state.is_profile_set = False
-
-    if st.session_state.username:
-        expense_dashboard()
-    else:
-        st.title("Welcome to Expense Manager")
-
-        # Login Section
+    st.title("Expense Manager Login")
+    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
+    with tab_login:
         st.subheader("Login")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-
-        login_button = st.button("Login")
-
-        if login_button:
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
+        if st.button("Login"):
             if authenticate(username, password):
-                st.session_state.username = username
-                st.success(f"Logged in as {username}")
-                if st.session_state.is_profile_set:
-                    expense_dashboard()
-                else:
-                    profile_setup()
+                st.session_state.update({"logged_in": True, "username": username})
+                st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values
+                st.experimental_rerun()
             else:
                 st.error("Invalid username or password.")
 
-        # Signup Section
+    with tab_signup:
         st.subheader("Sign Up")
-        new_username = st.text_input("New Username")
-        new_password = st.text_input("New Password", type="password")
-        signup_button = st.button("Sign Up")
-
-        if signup_button:
+        new_username = st.text_input("Username", key="signup_username")
+        new_password = st.text_input("Password", type="password", key="signup_password")
+        if st.button("Sign Up"):
             if register_user(new_username, new_password):
-                st.success("Sign up successful! Please log in.")
+                st.success("Account created! Please log in.")
             else:
-                st.error("Username already exists. Try another one.")
+                st.error("Username already exists. Try a different one.")
+
+# Initialize the application
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+
+if st.session_state["logged_in"]:
+    if not st.session_state.get("is_profile_set", False):
+        profile_setup()
+    else:
+        expense_dashboard()
+else:
+    login_signup()
