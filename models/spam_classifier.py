@@ -1,10 +1,10 @@
 import re
 import joblib
-import streamlit as st
 import nltk
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
+import streamlit as st
 import os
 
 # Download NLTK stopwords if not already present
@@ -14,21 +14,15 @@ nltk.download('stopwords')
 model_path = './models/spam_classifier_model.pkl'
 vectorizer_path = './models/tfidf_vectorizer.pkl'
 
-# Display the current working directory for debugging
-st.write("Current working directory:", os.getcwd())
-
 # Check if the model files exist before trying to load them
 if os.path.exists(model_path) and os.path.exists(vectorizer_path):
     try:
         model = joblib.load(model_path)
         vectorizer = joblib.load(vectorizer_path)
-        st.write("Model and vectorizer loaded successfully.")
     except Exception as e:
         st.write(f"Error loading model or vectorizer: {e}")
 else:
     st.write("Model files not found in the expected paths!")
-    st.write(f"Model path: {model_path}")
-    st.write(f"Vectorizer path: {vectorizer_path}")
 
 # Initialize stopwords and stemmer
 stop_words = set(stopwords.words('english'))
@@ -51,14 +45,19 @@ def preprocess_message(message):
 
 # Classify message function
 def classify_message(message):
+    """
+    Classify a message as 'spam' or 'ham' (not spam) based on the model prediction.
+    """
     cleaned = preprocess_message(message)
-    st.write(f"Processed message: {cleaned}")  # Debugging: see the cleaned message
     vector = vectorizer.transform([cleaned]).toarray()
     prediction = model.predict(vector)[0]
     return 'spam' if prediction == 1 else 'ham'
 
 # Extract transaction details function
 def extract_transaction_details(message):
+    """
+    Extract transaction type (credit or debit) and amount from a financial SMS.
+    """
     if credit_pattern.search(message):
         transaction_type = 'credit'
     elif debit_pattern.search(message):
@@ -71,8 +70,38 @@ def extract_transaction_details(message):
 
     return transaction_type, amount
 
-# Display function for Streamlit
+# UserAccount class for managing user balance and transactions
+class UserAccount:
+    def __init__(self, initial_balance=10000.0):
+        self.balance = initial_balance
+        self.transactions = []  # Store transaction details
+
+    def credit(self, amount):
+        self.balance += amount
+        self.transactions.append({'type': 'credit', 'amount': amount})
+        st.write(f"Credited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
+
+    def debit(self, amount):
+        if self.balance >= amount:
+            self.balance -= amount
+            self.transactions.append({'type': 'debit', 'amount': amount})
+            st.write(f"Debited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
+        else:
+            st.write("Insufficient balance!")
+
+    def show_balance(self):
+        st.write(f"Current Balance: INR {self.balance:.2f}")
+
+    def show_transactions(self):
+        st.write("Transaction History:")
+        for txn in self.transactions:
+            st.write(f"{txn['type'].capitalize()}: INR {txn['amount']:.2f}")
+
+# Streamlit display function for SMS classification interface
 def display_spam_detector(user_account):
+    """
+    Displays the SMS classification interface for classifying and analyzing bank messages.
+    """
     st.header("SMS Classification")
     
     # Introductory message
@@ -100,29 +129,3 @@ def display_spam_detector(user_account):
             elif transaction_type == 'credit':
                 user_account.credit(amount)
                 st.write("Transaction added successfully!")
-
-class UserAccount:
-    def __init__(self, initial_balance=10000.0):
-        self.balance = initial_balance
-        self.transactions = []  # Store transaction details
-
-    def credit(self, amount):
-        self.balance += amount
-        self.transactions.append({'type': 'credit', 'amount': amount})
-        st.write(f"Credited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
-
-    def debit(self, amount):
-        if self.balance >= amount:
-            self.balance -= amount
-            self.transactions.append({'type': 'debit', 'amount': amount})
-            st.write(f"Debited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
-        else:
-            st.write("Insufficient balance!")
-
-    def show_balance(self):
-        st.write(f"Current Balance: INR {self.balance:.2f}")
-
-    def show_transactions(self):
-        st.write("Transaction History:")
-        for txn in self.transactions:
-            st.write(f"{txn['type'].capitalize()}: INR {txn['amount']:.2f}")
