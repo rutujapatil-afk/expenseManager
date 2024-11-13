@@ -134,12 +134,23 @@ def display_spam_detector(user_account):
             if transaction_type == 'debit':
                 if st.button(f"Add debit of INR {amount:.2f} to transaction history"):
                     user_account.debit(amount)
+                    # Update session state to ensure persistence
+                    st.session_state.user_account = user_account  # Save the updated user account in session state
                     st.write("Transaction added successfully!")
             elif transaction_type == 'credit':
                 if st.button(f"Add credit of INR {amount:.2f} to transaction history"):
                     user_account.credit(amount)
+                    # Update session state to ensure persistence
+                    st.session_state.user_account = user_account  # Save the updated user account in session state
                     st.write("Transaction added successfully!")
 
     # Show balance and transaction history
     user_account.show_balance()
     user_account.show_transactions()
+
+# Initialize user account and manage session state for persistence
+if 'user_account' not in st.session_state:
+    st.session_state.user_account = UserAccount()  # Initialize if not in session state
+
+# Display the SMS classification interface
+display_spam_detector(st.session_state.user_account)
