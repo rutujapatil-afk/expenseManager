@@ -130,7 +130,7 @@ def expense_dashboard():
                         visualize_policy_comparison(suitable_policies)
 
                     # Pass user input values to the policy suggestion function
-                    display_policy_suggestion(monthly_investment, investment_duration)
+                    display_policy_suggestion()
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
