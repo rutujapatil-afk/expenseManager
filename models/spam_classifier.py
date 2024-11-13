@@ -28,10 +28,10 @@ else:
 stop_words = set(stopwords.words('english'))
 ps = PorterStemmer()
 
-# Regular expressions for transaction detection
-credit_pattern = re.compile(r'credited|deposit|credited to your account|cr', re.IGNORECASE)
-debit_pattern = re.compile(r'debited|withdrawal|debited from your account|dr', re.IGNORECASE)
-amount_pattern = re.compile(r'INR\s?([\d,]+\.\d{2})')
+# Improved regular expressions for transaction detection
+credit_pattern = re.compile(r'credited|deposit|credited to your account|cr|credit', re.IGNORECASE)
+debit_pattern = re.compile(r'debited|withdrawal|debited from your account|dr|debit', re.IGNORECASE)
+amount_pattern = re.compile(r'INR\s?([\d,]+\.\d{1,2})')
 
 # Preprocess message function
 def preprocess_message(message):
@@ -61,10 +61,10 @@ amount_pattern = re.compile(r'\b(?:INR\s?)?([\d,]+\.\d{1,2})\b')
 def extract_transaction_details(message):
     transaction_type = None
     # Check if it's a debit or credit
-    if credit_pattern.search(message):
-        transaction_type = 'credit'
-    elif debit_pattern.search(message):
+    if debit_pattern.search(message):  # more specifically checks for debit-related words
         transaction_type = 'debit'
+    elif credit_pattern.search(message):  # more specifically checks for credit-related words
+        transaction_type = 'credit'
 
     # Search for the amount in the message
     amount_match = amount_pattern.search(message)
