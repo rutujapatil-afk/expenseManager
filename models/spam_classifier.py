@@ -54,24 +54,29 @@ def classify_message(message):
     return 'spam' if prediction == 1 else 'ham'
 
 # Extract transaction details function
+# Regular expression for detecting amounts in the message (including decimals)
+amount_pattern = re.compile(r'\b(?:INR\s?)?([\d,]+\.\d{1,2})\b')
+
 # Extract transaction details function
 def extract_transaction_details(message):
+    transaction_type = None
+    # Check if it's a debit or credit
     if credit_pattern.search(message):
         transaction_type = 'credit'
     elif debit_pattern.search(message):
         transaction_type = 'debit'
-    else:
-        transaction_type = None
 
-    # Update regex to handle the amount format more accurately
+    # Search for the amount in the message
     amount_match = amount_pattern.search(message)
     if amount_match:
         amount_str = amount_match.group(1)
-        amount = float(amount_str.replace(',', '').strip())  # Remove commas and any extra spaces
+        # Clean up the amount and ensure it's a float
+        amount = float(amount_str.replace(',', '').strip())  # Remove commas and extra spaces
     else:
         amount = 0.0
 
     return transaction_type, amount
+
 
 # UserAccount class for managing user balance and transactions
 class UserAccount:
