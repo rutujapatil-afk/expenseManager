@@ -165,6 +165,53 @@ def visualize_policy_comparison(suitable_policies):
     else:
         st.write("No suitable policies to visualize.")
 
+def visualize_additional_charts(suitable_policies, policy_data):
+    # Ensure there are policies to visualize
+    if suitable_policies is not None and not suitable_policies.empty:
+        
+        # 1. Distribution of Expected ROI by Policy Type
+        st.write("### Distribution of Expected ROI by Policy Type")
+        plt.figure(figsize=(10, 6))
+        sns.boxplot(data=policy_data, x='Policy Type', y='Expected ROI', palette='coolwarm')
+        plt.title("Expected ROI Distribution by Policy Type")
+        plt.xlabel("Policy Type")
+        plt.ylabel("Expected ROI (%)")
+        st.pyplot(plt)
+
+        # 2. Investment Horizon vs. Potential Return Scatter Plot
+        st.write("### Investment Horizon vs. Potential Return")
+        plt.figure(figsize=(10, 6))
+        sns.scatterplot(
+            data=suitable_policies,
+            x='Investment Horizon',
+            y='Potential Return ($)',
+            hue='Policy Type',
+            palette='Set1',
+            s=100,
+            edgecolor="black"
+        )
+        plt.title("Investment Horizon vs. Potential Return for Suitable Policies")
+        plt.xlabel("Investment Horizon (months)")
+        plt.ylabel("Potential Return ($)")
+        plt.legend(title="Policy Type", loc="upper left")
+        st.pyplot(plt)
+
+        # 3. Risk Level Distribution of Top Policies
+        st.write("### Risk Level Distribution Among Top Recommended Policies")
+        top_policies_risk = suitable_policies['Risk Level'].value_counts()
+        plt.figure(figsize=(7, 7))
+        plt.pie(
+            top_policies_risk,
+            labels=top_policies_risk.index,
+            autopct='%1.1f%%',
+            startangle=140,
+            colors=sns.color_palette("Set2")
+        )
+        plt.title("Risk Level Distribution of Top Recommended Policies")
+        st.pyplot(plt)
+
+    else:
+        st.write("No suitable policies to display additional visualizations.")
 
 def display_policy_suggestion():
     """
