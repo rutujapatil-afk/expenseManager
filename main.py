@@ -3,9 +3,7 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison
-from models.policy_suggestions import policy_data, model_spending
-from models.policy_suggestions import display_policy_suggestion
+from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, display_policy_suggestion
 
 # User Authentication Functions
 def hash_password(password):
