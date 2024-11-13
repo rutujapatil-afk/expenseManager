@@ -105,6 +105,7 @@ class UserAccount:
         for txn in self.transactions:
             st.write(f"{txn['type'].capitalize()}: INR {txn['amount']:.2f}")
 
+
 # Streamlit display function for SMS classification interface
 def display_spam_detector(user_account):
     """
@@ -135,5 +136,10 @@ def display_spam_detector(user_account):
                     user_account.debit(amount)
                     st.write("Transaction added successfully!")
             elif transaction_type == 'credit':
-                user_account.credit(amount)
-                st.write("Transaction added successfully!")
+                if st.button(f"Add credit of INR {amount:.2f} to transaction history"):
+                    user_account.credit(amount)
+                    st.write("Transaction added successfully!")
+
+    # Show balance and transaction history
+    user_account.show_balance()
+    user_account.show_transactions()
