@@ -1,209 +1,136 @@
-import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import streamlit as st
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.ensemble import RandomForestRegressor
+import os
 
-# Load Datasets
-@st.cache_data
 def load_data():
+    # Load policy and spending data
     policy_data = pd.read_csv("data/insurance_policies_dataset.csv")
     spending_data = pd.read_csv("data/transactions.csv")
     return policy_data, spending_data
 
-policy_data, spending_data = load_data()
+def preprocess_data(df):
+    # Fill missing values
+    df.fillna(df.mean(), inplace=True)
 
-# Data Preprocessing
-def preprocess_data(spending_data, policy_data):
-    spending_data.columns = spending_data.columns.str.strip()
-    spending_data['Date'] = pd.to_datetime(spending_data['Date'])
-    monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
-    monthly_spending.rename(columns={'Amount': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
-    monthly_spending['Month'] = monthly_spending['Month'].dt.to_timestamp().dt.year * 100 + monthly_spending['Month'].dt.month
+    # Label encoding for categorical features
+    label_encoders = {}
+    for column in ['Policy Type', 'Risk Level', 'Investment Horizon', 'Liquidity', 
+                   'Tax Efficiency', 'Fee Structure', 'Target Audience', 
+                   'Investment Goals', 'Tax Advantages']:
+        le = LabelEncoder()
+        df[column] = le.fit_transform(df[column])
+        label_encoders[column] = le
 
-    # Categorize monthly spending
-    monthly_spending['Spending Category'] = pd.cut(monthly_spending['Monthly Expense ($)'],
-                                                    bins=[0, 500, 1500, np.inf],
-                                                    labels=['Low', 'Medium', 'High'])
-
-    # Encoding policy types
-    le = LabelEncoder()
-    policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
-
-    # Categorize 'Expected ROI' if column exists
-    if 'Expected ROI' in policy_data.columns:
-        policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'], bins=[0, 5, 10, 15, np.inf],
-                                             labels=['Low', 'Medium', 'High', 'Very High'])
-    else:
-        st.error("Column 'Expected ROI' is missing from policy data.")
-        return None, None
-
-    # Check for required columns and return error if any are missing
-    required_columns = ['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']
-    missing_columns = [col for col in required_columns if col not in policy_data.columns]
-    if missing_columns:
-        st.error(f"Missing columns: {', '.join(missing_columns)}")
-        return None, None
-
-    return monthly_spending, policy_data
-
-monthly_spending, policy_data = preprocess_data(spending_data, policy_data)
-
-# Train Models
-def train_models(monthly_spending, policy_data):
-    X_spending = monthly_spending[['Month']]
-    y_spending = monthly_spending['Spending Category']
-    X_train_s, X_test_s, y_train_s, y_test_s = train_test_split(X_spending, y_spending, test_size=0.2, random_state=42)
-    model_spending = RandomForestClassifier(random_state=42)
-    model_spending.fit(X_train_s, y_train_s)
-    acc_spending = accuracy_score(y_test_s, model_spending.predict(X_test_s))
-
-    X_policy = policy_data[['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']]
-    X_policy = pd.get_dummies(X_policy, drop_first=True)
-    y_policy = policy_data['ROI Category']
-    X_train_p, X_test_p, y_train_p, y_test_p = train_test_split(X_policy, y_policy, test_size=0.2, random_state=42)
-    model_policy = RandomForestClassifier(random_state=42)
-    model_policy.fit(X_train_p, y_train_p)
-    acc_policy = accuracy_score(y_test_p, model_policy.predict(X_test_p))
-
-    return model_spending, model_policy, acc_spending, acc_policy
-
-model_spending, model_policy, acc_spending, acc_policy = train_models(monthly_spending, policy_data)
-
-# User Input
-def get_user_input():
-    st.header("Enter Your Investment Details")
-    with st.form(key='investment_form'):
-        monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
-        investment_duration = st.number_input("Enter your investment duration (in months):", min_value=1, max_value=600, value=12)
-        submit_button = st.form_submit_button(label='Submit Investment')
-        
-        if submit_button:
-            st.session_state.monthly_investment = monthly_investment
-            st.session_state.investment_duration = investment_duration
-            st.session_state.input_submitted = True
-            st.success("Investment details submitted successfully!")
-
-    if 'monthly_investment' not in st.session_state or 'investment_duration' not in st.session_state:
-        return None, None
-
-    return st.session_state.monthly_investment, st.session_state.investment_duration
-
-# Policy Recommendation
-def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
-    user_spending = np.array([[user_investment]])
-    predicted_category = spending_model.predict(user_spending)[0]
-    st.write(f"Predicted Spending Category: {predicted_category}")
-
-    if predicted_category == 'Low':
-        suitable_policies = policy_data[policy_data['ROI Category'] == 'Low']
-    elif predicted_category == 'Medium':
-        suitable_policies = policy_data[policy_data['ROI Category'] != 'Very High']
-    else:
-        suitable_policies = policy_data[policy_data['ROI Category'] == 'High']
-
-    if not suitable_policies.empty:
-        suitable_policies = suitable_policies.copy()
-        suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
-        recommended_policy = suitable_policies.loc[suitable_policies['Potential Return ($)'].idxmax()]
-
-        st.write("### Recommended Policy Based on Your Investment:")
-        st.write(recommended_policy[['Policy Name', 'Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment', 'Potential Return ($)']])
-
-        st.write("### Reasons for Selection:")
-        st.write(f"1. *Expected ROI*: The selected policy has an expected ROI of {recommended_policy['Expected ROI']}%, which aligns with your goals.")
-        st.write(f"2. *Potential Return*: Based on your investment of ${user_investment} over {investment_duration} months, the potential return is ${recommended_policy['Potential Return ($)']:.2f}.")
-        st.write(f"3. *Investment Duration*: The maturity period aligns with your investment duration of {investment_duration // 12} years.")
-        
-        return recommended_policy, suitable_policies
-    else:
-        st.write("No suitable policies found for your spending category.")
-        return None, None
-
-# Visualization
-def visualize_policy_comparison(suitable_policies):
-    if suitable_policies is not None and not suitable_policies.empty:
-        top_policies = suitable_policies.nlargest(5, 'Potential Return ($)')
-        plt.figure(figsize=(10, 6))
-        sns.set_style("whitegrid")
-        
-        bar_plot = sns.barplot(
-            data=top_policies,
-            y='Policy Name',
-            x='Potential Return ($)',
-            palette='viridis',
-            edgecolor='black'
-        )
-        
-        plt.title("Top 5 Investment Policies by Potential Return", fontsize=16, weight='bold')
-        plt.xlabel("Potential Return ($)", fontsize=14)
-        plt.ylabel("Policy Name", fontsize=14)
-
-        for index, value in enumerate(top_policies['Potential Return ($)']):
-            bar_plot.text(value, index, f'${value:,.2f}', color='black', va="center")
-
-        st.pyplot(plt)
-    else:
-        st.write("No suitable policies to visualize.")
-
-def visualize_additional_charts(suitable_policies, policy_data):
-    if suitable_policies is not None and not suitable_policies.empty:
-        
-        st.write("### Distribution of Expected ROI by Policy Type")
-        plt.figure(figsize=(10, 6))
-        sns.boxplot(data=policy_data, x='Policy Type', y='Expected ROI', palette='coolwarm')
-        plt.title("Expected ROI Distribution by Policy Type")
-        plt.xlabel("Policy Type")
-        plt.ylabel("Expected ROI (%)")
-        st.pyplot(plt)
-
-        st.write("### Investment Horizon vs. Potential Return")
-        plt.figure(figsize=(10, 6))
-        sns.scatterplot(
-            data=suitable_policies,
-            x='Investment Horizon',
-            y='Potential Return ($)',
-            hue='Policy Type',
-            palette='Set1',
-            s=100,
-            edgecolor="black"
-        )
-        plt.title("Investment Horizon vs. Potential Return for Suitable Policies")
-        plt.xlabel("Investment Horizon (months)")
-        plt.ylabel("Potential Return ($)")
-        plt.legend(title="Policy Type", loc="upper left")
-        st.pyplot(plt)
-
-        st.write("### Risk Level Distribution Among Top Recommended Policies")
-        top_policies_risk = suitable_policies['Risk Level'].value_counts()
-        plt.figure(figsize=(7, 7))
-        plt.pie(
-            top_policies_risk,
-            labels=top_policies_risk.index,
-            autopct='%1.1f%%',
-            startangle=140,
-            colors=sns.color_palette("Set2")
-        )
-        plt.title("Risk Level Distribution of Top Recommended Policies")
-        st.pyplot(plt)
+    # Scaling numerical features
+    scaler = StandardScaler()
+    numerical_columns = ['Expected ROI', 'Historical 1-Year Return', 'Historical 3-Year Return', 
+                         'Historical 5-Year Return', 'Volatility', 'Sharpe Ratio', 
+                         'Max Drawdown', 'Minimum Investment', 'Maximum Investment', 
+                         'Lock-in Period', 'Exit Fees/Withdrawal Penalties']
+    df[numerical_columns] = scaler.fit_transform(df[numerical_columns])
     
-    else:
-        st.write("No suitable policies to visualize additional charts.")
+    return df, scaler, label_encoders
 
-def display_dashboard():
-    user_investment, investment_duration = get_user_input()
-    
-    if user_investment is not None and investment_duration is not None:
-        recommended_policy, suitable_policies = recommend_policy(user_investment, investment_duration, policy_data, model_spending)
-        
-        if recommended_policy is not None:
-            visualize_policy_comparison(suitable_policies)
-            visualize_additional_charts(suitable_policies, policy_data)
+def train_model(X, y):
+    # Split data and train the model
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+    return model
 
-# Run the dashboard
-display_dashboard()
+def display_investment_policy_recommendation():
+    # Load and preprocess data
+    df, _ = load_data()
+    df, scaler, label_encoders = preprocess_data(df)
 
+    # Separate features and target variable
+    X = df.drop(columns=['Policy ID', 'Policy Name'])
+    y = df['Expected ROI']
+
+    # Train the model
+    model = train_model(X, y)
+
+    st.title('Investment Policy Recommendation System')
+
+    # Get user inputs
+    risk_level = st.selectbox("Risk Level", ["Low", "Medium", "High"])
+    investment_horizon = st.selectbox("Investment Horizon", ["Short-term", "Medium-term", "Long-term"])
+    expected_roi = st.slider("Expected ROI (%)", 5, 20, 10, step=1)
+    min_investment = st.number_input("Minimum Investment (INR)", min_value=1000, max_value=10000000, value=50000, step=1000)
+
+    def automate_assumptions(risk_level, investment_horizon, expected_roi, min_investment):
+        # Set assumptions based on user inputs
+        if risk_level == "Low":
+            volatility, max_drawdown, sharpe_ratio = 5, 5, 1.5
+        elif risk_level == "Medium":
+            volatility, max_drawdown, sharpe_ratio = 10, 10, 1.0
+        else:
+            volatility, max_drawdown, sharpe_ratio = 15, 20, 0.5
+
+        if investment_horizon == "Short-term":
+            liquidity, lock_in_period, exit_fees = 0, 1, 3
+        elif investment_horizon == "Medium-term":
+            liquidity, lock_in_period, exit_fees = 1, 3, 2
+        else:
+            liquidity, lock_in_period, exit_fees = 2, 5, 1
+
+        matching_roi = expected_roi
+        min_investment_policy = df[df['Minimum Investment'] <= min_investment]
+        return matching_roi, volatility, max_drawdown, sharpe_ratio, liquidity, lock_in_period, exit_fees, min_investment_policy
+
+    # Apply assumptions to filter policies
+    matching_roi, volatility, max_drawdown, sharpe_ratio, liquidity, lock_in_period, exit_fees, min_investment_policy = automate_assumptions(
+        risk_level, investment_horizon, expected_roi, min_investment)
+
+    # Filter policies based on user inputs
+    filtered_df = min_investment_policy[(min_investment_policy['Expected ROI'] >= matching_roi - 1) & 
+                                        (min_investment_policy['Expected ROI'] <= matching_roi + 1)]
+
+    if st.button("Get Recommendation"):
+        if len(filtered_df) > 0:
+            # Prepare data for prediction
+            X_filtered = filtered_df.drop(columns=['Policy ID', 'Policy Name'])
+            X_filtered_scaled = scaler.transform(X_filtered)
+            predicted_roi = model.predict(X_filtered_scaled)
+            filtered_df['Predicted ROI'] = predicted_roi
+
+            # Select and display top 5 policies
+            top_policies = filtered_df[['Policy Name', 'Predicted ROI']].sort_values(by='Predicted ROI', ascending=False).head(5)
+
+            st.subheader("Recommended Policy")
+            st.write(f"Policy: {top_policies.iloc[0]['Policy Name']}")
+
+            st.subheader("Top 5 Policies")
+            st.write(top_policies)
+
+            # Visualize top 5 policies
+            visualize_policy_comparison(top_policies)
+        else:
+            st.warning("No policies match your criteria.")
+
+def visualize_policy_comparison(top_policies):
+    # Improved visualization for top 5 policies
+    st.subheader("Top 5 Policy Comparison")
+
+    if top_policies.empty:
+        st.warning("No policies available for comparison.")
+        return
+
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    # Set up the figure for comparison
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x="Policy Name", y="Predicted ROI", data=top_policies, palette="viridis")
+    plt.title("Top 5 Policies Comparison")
+    plt.xlabel("Policy Name")
+    plt.ylabel("Predicted ROI (%)")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+
+    # Display the chart on the Streamlit app
+    st.pyplot(plt)
