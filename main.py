@@ -154,11 +154,42 @@ def expense_dashboard():
     # Expense Management Section
     with st.expander("Expense Management"):
         st.subheader("Add an Expense")
-        # Your existing expense management code...
+
+        amount = st.number_input("Amount", min_value=0.0, step=0.01)
+        category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
+        expense_date = st.date_input("Date", value=date.today())
+        description = st.text_input("Enter Description", "") if category == "Others" else ""
+
+        if st.button("Add Expense"):
+            expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
+            expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
+            expenses = pd.concat([expenses, expense_data], ignore_index=True)
+            expenses.to_csv("data/expenses.csv", index=False)
+            st.success(f"Expense of {amount} in category {category} added.")
+            user_account.debit(amount, description=description if description else category)  # Update balance
+
+        st.subheader("Your Expenses")
+        expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
+        st.dataframe(expenses)
+
+        # Deletion option for multiple transactions
+        if not expenses.empty:
+            st.subheader("Delete Multiple Transactions")
+            delete_buttons = [st.checkbox(f"{row['category']} | {row['amount']} | {row['date']} | {row['description']}", key=f"checkbox_{index}") for index, row in expenses.iterrows()]
+            if st.button("🗑️ Delete Selected Transactions"):
+                selected_indices = [i for i, checked in enumerate(delete_buttons) if checked]
+                if selected_indices:
+                    expenses = expenses.drop(selected_indices)
+                    expenses.to_csv("data/expenses.csv", index=False)
+                    st.success("Selected transactions deleted.")
+                    try:
+                        st.experimental_rerun()
+                    except AttributeError:
+                        st.error("An error occurred while trying to rerun the app. Please try refreshing the page.")
 
     # Investment Policy Suggestions Section
     if st.session_state.get("is_profile_set", False):
-        with st.expander("Investment Policy Suggestions (ML Models)"):
+        with st.expander("Investment Policy Suggestions (ML Models)") :
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
             if st.session_state.get("input_submitted", False) and st.button("Analyze"):
@@ -167,17 +198,28 @@ def expense_dashboard():
                     visualize_policy_comparison(suitable_policies)
                 display_policy_suggestion(monthly_investment, investment_duration)
 
-# Main entry point
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+    # SMS Classification Section
+    with st.expander("SMS Classification"):
+        st.subheader("SMS Classification")
+        message = st.text_area("Paste your bank SMS here:")
+        if st.button("Classify"):
+            if message:
+                result, transaction_details = classify_message(message)
+                if result == "spam":
+                    st.warning("This message is spam!")
+                else:
+                    st.success("This message contains a valid financial transaction.")
+                    st.write(transaction_details)
 
-if "show_signup" not in st.session_state:
-    st.session_state.show_signup = False
-
-if st.session_state.logged_in:
-    expense_dashboard()
-else:
-    if st.session_state.show_signup:
-        signup_page()
+# Main logic
+def main():
+    if "logged_in" not in st.session_state or not st.session_state.get("logged_in", False):
+        if st.session_state.get("show_signup", False):
+            signup_page()
+        else:
+            login_page()
     else:
-        login_page()
+        expense_dashboard()
+
+if __name__ == "__main__":
+    main()
