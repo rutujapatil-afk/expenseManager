@@ -189,26 +189,22 @@ def login_signup():
                 st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values
                 st.experimental_rerun()
             else:
-                st.error("Invalid username or password.")
-
+                st.error("Invalid username or password")
     with tab_signup:
         st.subheader("Sign Up")
-        new_username = st.text_input("Username", key="signup_username")
-        new_password = st.text_input("Password", type="password", key="signup_password")
+        new_username = st.text_input("New Username", key="signup_username")
+        new_password = st.text_input("New Password", type="password", key="signup_password")
+        confirm_password = st.text_input("Confirm Password", type="password", key="confirm_signup_password")
         if st.button("Sign Up"):
-            if register_user(new_username, new_password):
-                st.success("Account created! Please log in.")
+            if new_password == confirm_password:
+                if register_user(new_username, new_password):
+                    st.success("Account created successfully! Please log in.")
+                else:
+                    st.error("Username already exists.")
             else:
-                st.error("Username already exists. Try a different one.")
+                st.error("Passwords do not match.")
 
-# Initialize the application
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-
-if st.session_state["logged_in"]:
-    if not st.session_state.get("is_profile_set", False):
-        profile_setup()
-    else:
-        expense_dashboard()
+if "logged_in" in st.session_state and st.session_state["logged_in"]:
+    expense_dashboard()
 else:
     login_signup()
