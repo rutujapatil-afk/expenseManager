@@ -184,25 +184,20 @@ def expense_dashboard():
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
-        message = st.text_area("Enter bank SMS here:", key="sms_input")
+        st.subheader("Classify SMS Messages")
+        sms_input = st.text_area("Enter SMS here", height=150, placeholder="Type your SMS message here...")
         
-        if st.button("Classify"):
-            if message:  # Ensure that the message is not empty
-                try:
-                    # Classify the message (ensure classify_message function works correctly)
-                    result, transaction_details = classify_message(message)
-                    
-                    if result == "spam":
-                        st.write("This message appears to be spam.")
-                    elif result == "non-spam":
-                        st.write("This message contains a valid financial transaction.")
-                        st.write(transaction_details)
-                    else:
-                        st.warning("The message could not be classified. Please check the input.")
-                except Exception as e:
-                    st.error(f"An error occurred during classification: {e}")
-            else:
-                st.warning("Please enter a valid SMS message.")
+        if sms_input:
+            try:
+                category, transaction = classify_message(sms_input)
+                if category:
+                    st.write(f"Category: {category}")
+                if transaction:
+                    st.write(f"Transaction details: {transaction}")
+                else:
+                    st.warning("No transaction details found in the SMS.")
+            except Exception as e:
+                st.error(f"An error occurred during SMS classification: {str(e)}")
 
 # Main page route
 def main():
