@@ -50,7 +50,7 @@ def register_user(username, password):
     save_user(username, password)
     return True
 
-# Dashboard Functionality
+# User Account Class
 class UserAccount:
     def __init__(self, initial_balance=10000.0):
         self.balance = initial_balance
@@ -79,16 +79,14 @@ class UserAccount:
 # Initialize a user account instance
 user_account = UserAccount()
 
-# Login page function
+# Updated login page function
 def login_page():
     st.title("Log in to Expense Manager")
     st.write("You must log in to continue.")
 
-    # Create a username and password input form
     username = st.text_input("Username", placeholder="Enter your username", label_visibility="collapsed")
     password = st.text_input("Password", type="password", placeholder="Enter your password", label_visibility="collapsed")
 
-    # Login button
     if st.button("Log in"):
         if authenticate(username, password):
             st.session_state.username = username
@@ -98,9 +96,8 @@ def login_page():
         else:
             st.error("Invalid username or password")
 
-    # Option to navigate to the signup process
     if st.button("Don't have an account?"):
-        st.session_state.show_signup = True  # Trigger showing the signup form
+        st.session_state.show_signup = True
 
 # Signup page function
 def signup_page():
@@ -115,24 +112,19 @@ def signup_page():
         if new_password == confirm_password:
             if register_user(new_username, new_password):
                 st.success("Registration successful! You can now log in.")
-                st.session_state.show_signup = False  # Reset the show_signup state
+                st.session_state.show_signup = False
             else:
                 st.error("Username already taken. Try another one.")
         else:
             st.error("Passwords do not match.")
     
-    # Option to go back to the login page
     if st.button("Already have an account? Log in"):
-        st.session_state.show_signup = False  # Hide the signup page and show login form
+        st.session_state.show_signup = False
 
 # Expense Dashboard Function
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
-
-    # Display current balance
     st.header(f"Current Balance: INR {user_account.balance:.2f}")
-    
-    # Welcome message
     st.header(f"Welcome, {st.session_state.username}!")
 
     # Expense Management Section
@@ -150,13 +142,12 @@ def expense_dashboard():
             expenses = pd.concat([expenses, expense_data], ignore_index=True)
             expenses.to_csv("data/expenses.csv", index=False)
             st.success(f"Expense of {amount} in category {category} added.")
-            user_account.debit(amount, description=description if description else category)  # Update balance
+            user_account.debit(amount, description=description if description else category)
 
         st.subheader("Your Expenses")
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
         st.dataframe(expenses)
 
-        # Deletion option for multiple transactions
         if not expenses.empty:
             st.subheader("Delete Multiple Transactions")
             delete_buttons = [st.checkbox(f"{row['category']} | {row['amount']} | {row['date']} | {row['description']}", key=f"checkbox_{index}") for index, row in expenses.iterrows()]
@@ -186,27 +177,35 @@ def expense_dashboard():
     with st.expander("SMS Classification"):
         st.subheader("Classify SMS Messages")
         sms_input = st.text_area("Enter SMS here", height=150, placeholder="Type your SMS message here...")
-        
+
         if sms_input:
             try:
                 category, transaction = classify_message(sms_input)
+                
                 if category:
                     st.write(f"Category: {category}")
+                else:
+                    st.warning("Unable to determine category from the SMS.")
+
                 if transaction:
                     st.write(f"Transaction details: {transaction}")
                 else:
                     st.warning("No transaction details found in the SMS.")
+                    
             except Exception as e:
                 st.error(f"An error occurred during SMS classification: {str(e)}")
 
-# Main page route
-def main():
-    if "logged_in" not in st.session_state or not st.session_state.logged_in:
-        login_page()
-    elif "show_signup" in st.session_state and st.session_state.show_signup:
+# Main entry point
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+if "show_signup" not in st.session_state:
+    st.session_state.show_signup = False
+
+if st.session_state.logged_in:
+    expense_dashboard()
+else:
+    if st.session_state.show_signup:
         signup_page()
     else:
-        expense_dashboard()
-
-if __name__ == "__main__":
-    main()
+        login_page()
