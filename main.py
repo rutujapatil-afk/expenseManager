@@ -176,20 +176,17 @@ def profile_setup():
 
 # Main Function
 def login_signup():
-    st.title("Expense Manager Login")
-
     if "signup_visible" not in st.session_state:
         st.session_state.signup_visible = False
 
     if st.session_state.signup_visible:
-        # Sign Up form
         username = st.text_input("Username", key="signup_username")
         password = st.text_input("Password", type="password", key="signup_password")
         confirm_password = st.text_input("Confirm Password", type="password", key="signup_confirm_password")
-        
+
         if password != confirm_password:
             st.error("Passwords do not match!")
-        
+
         if st.button("Sign Up"):
             if register_user(username, password):
                 st.success("Account created! You can now log in.")
@@ -197,10 +194,9 @@ def login_signup():
             else:
                 st.error("Username already taken.")
     else:
-        # Login form
         username = st.text_input("Username", key="login_username")
         password = st.text_input("Password", type="password", key="login_password")
-        
+
         if st.button("Log In"):
             if authenticate(username, password):
                 st.session_state.username = username
