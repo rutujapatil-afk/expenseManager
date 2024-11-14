@@ -186,7 +186,11 @@ def profile_setup():
 # Main Function
 def login_signup():
     st.title("Expense Manager Login")
+    
+    # Define login and signup tabs
     tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
+    
+    # Login tab
     with tab_login:
         st.subheader("Login")
         username = st.text_input("Username", key="login_username")
@@ -199,6 +203,7 @@ def login_signup():
             else:
                 st.error("Invalid username or password.")
 
+    # Signup tab
     with tab_signup:
         st.subheader("Sign Up")
         new_username = st.text_input("Username", key="signup_username")
@@ -219,4 +224,4 @@ if st.session_state["logged_in"]:
     else:
         expense_dashboard()
 else:
-    login_signup()
+    login_signup()  # This should be called only once here if the user is not logged in
