@@ -3,7 +3,14 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
+from models.policy_suggestions import (
+    get_user_input,
+    recommend_policy,
+    visualize_policy_comparison,
+    policy_data,
+    model_spending,
+    display_policy_suggestion
+)
 from models.spam_classifier import classify_message, extract_transaction_details
 
 # User Authentication Functions
@@ -182,40 +189,35 @@ def expense_dashboard():
                     visualize_policy_comparison(suitable_policies)
                 display_policy_suggestion(monthly_investment, investment_duration)
 
-    # SMS Classification Section
+    # SMS Classification Section with improved error handling
     with st.expander("SMS Classification"):
-        st.subheader("SMS Classification")
-        message = st.text_area("Paste your bank message here", key="sms_input")
+        message = st.text_area("Enter bank SMS here:", key="sms_input")
         
-        if st.button("Analyze"):
-            label = classify_message(message)
-            
-            if label == 'spam':
-                st.write("This message appears to be spam.")
+        if st.button("Classify"):
+            if message:  # Ensure that the message is not empty
+                try:
+                    # Classify the message (ensure classify_message function works correctly)
+                    result, transaction_details = classify_message(message)
+                    
+                    if result == "spam":
+                        st.write("This message appears to be spam.")
+                    else:
+                        st.write("This message contains a valid financial transaction.")
+                        st.write(transaction_details)
+                except Exception as e:
+                    st.error(f"An error occurred during classification: {e}")
             else:
-                st.write("Non-spam message detected.")
-                transaction_type, amount = extract_transaction_details(message)
-                
-                if transaction_type and amount:
-                    st.write(f"Transaction detected: {transaction_type} of INR {amount}")
-                    if transaction_type == 'debit':
-                        user_account.debit(amount)
-                    elif transaction_type == 'credit':
-                        user_account.credit(amount)
-                else:
-                    st.write("No valid transaction detected in the message.")
+                st.warning("Please enter a valid SMS message.")
 
-# Main entry point
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-if "show_signup" not in st.session_state:
-    st.session_state.show_signup = False
-
-if st.session_state.logged_in:
-    expense_dashboard()
-else:
-    if st.session_state.show_signup:
-        signup_page()
+# Main Logic to control flow of pages
+def main():
+    if "logged_in" not in st.session_state or not st.session_state.get("logged_in", False):
+        if "show_signup" not in st.session_state or not st.session_state["show_signup"]:
+            login_page()  # If the user is not logged in, show the login page
+        else:
+            signup_page()  # If show_signup is true, show signup page
     else:
-        login_page()
+        expense_dashboard()  # Display the dashboard once the user is logged in
+
+if __name__ == "__main__":
+    main()
