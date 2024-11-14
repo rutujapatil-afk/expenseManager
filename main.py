@@ -79,6 +79,43 @@ class UserAccount:
 # Initialize a user account instance
 user_account = UserAccount()
 
+# Updated login page function
+def login_page():
+    st.title("Log in to Expense Manager")
+    st.write("You must log in to continue.")
+
+    # Create a username and password input form
+    username = st.text_input("Username", placeholder="Enter your username", label_visibility="collapsed")
+    password = st.text_input("Password", type="password", placeholder="Enter your password", label_visibility="collapsed")
+
+    # Login button
+    if st.button("Log in"):
+        if authenticate(username, password):
+            st.session_state.username = username
+            st.session_state.logged_in = True
+            st.success("Login successful!")
+            st.experimental_rerun()  # Refresh the page to show the dashboard
+        else:
+            st.error("Invalid username or password")
+
+    # Forgot password link
+    st.markdown("[Forgotten account?](#)")
+
+    # Sign up section
+    st.markdown("**Don't have an account?**")
+    new_username = st.text_input("Username (new user)", placeholder="Create a new username", label_visibility="collapsed")
+    new_password = st.text_input("Password (new user)", type="password", placeholder="Create a new password", label_visibility="collapsed")
+    confirm_password = st.text_input("Confirm Password", type="password", placeholder="Re-enter your password", label_visibility="collapsed")
+
+    if st.button("Sign up for Expense Manager"):
+        if new_password == confirm_password:
+            if register_user(new_username, new_password):
+                st.success("Registration successful! You can now log in.")
+            else:
+                st.error("Username already taken. Try another one.")
+        else:
+            st.error("Passwords do not match.")
+
 # Updated expense_dashboard function
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
@@ -154,48 +191,16 @@ def expense_dashboard():
                     st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
                     
                     # Handle Debit or Credit transaction
-                    if transaction_type == 'debit' and st.button(f"Add debit of INR {amount:.2f} to transaction history"):
-                        user_account.debit(amount)  # Debit the amount and save it
-                        st.success("Debit transaction added successfully.")
-                    
-                    elif transaction_type == 'credit' and st.button(f"Add credit of INR {amount:.2f} to transaction history"):
-                        user_account.credit(amount)  # Credit the amount and save it
-                        st.success("Credit transaction added successfully.")
-                    
-                    # Display updated transaction history
-                    user_account.transactions = pd.read_csv("data/expenses.csv")  # Reload the saved transactions
-                    st.write("Updated Transaction History:")
-                    st.dataframe(user_account.transactions)
+                    if transaction_type == 'debit' and st.session_state.get('balance', 0) >= amount:
+                        user_account.debit(amount)
+                    elif transaction_type == 'credit':
+                        user_account.credit(amount)
 
+# Main code flow
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
 
-# Profile Setup for First-Time Login
-def profile_setup():
-    st.title("Setup Your Profile")
-    first_name = st.text_input("First Name")
-    last_name = st.text_input("Last Name")
-    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-    age = st.number_input("Age", min_value=0)
-    profession = st.text_input("Profession")
-    if st.button("Save Profile"):
-        if first_name and last_name and age and profession:
-            st.session_state.update({"first_name": first_name, "last_name": last_name, "gender": gender, "age": age, "profession": profession, "is_profile_set": True})
-            profile_data = pd.DataFrame([{"username": st.session_state.username, "first_name": first_name, "last_name": last_name, "gender": gender, "age": age, "profession": profession}])
-            if not os.path.exists("data/profiles.csv"):
-                profile_data.to_csv("data/profiles.csv", index=False)
-            else:
-                profile_data.to_csv("data/profiles.csv", mode="a", header=False, index=False)
-            st.success("Profile setup successfully!")
-        else:
-            st.error("Please fill out all fields.")
-
-# Main Application Flow
-def main():
-    if "username" not in st.session_state:
-        login_page()
-    elif "is_profile_set" in st.session_state and not st.session_state.is_profile_set:
-        profile_setup()
-    else:
-        expense_dashboard()
-
-if __name__ == "__main__":
-    main()
+if st.session_state.logged_in:
+    expense_dashboard()
+else:
+    login_page()
