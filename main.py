@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import hashlib
 import os
-import re
 from datetime import date
 from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
@@ -50,6 +49,14 @@ def register_user(username, password):
         return False
     save_user(username, password)
     return True
+
+# Ensure the expenses file exists
+def create_expenses_file():
+    if not os.path.exists("data/expenses.csv"):
+        # Create an empty expenses file if it doesn't exist
+        pd.DataFrame(columns=["amount", "category", "date", "description"]).to_csv("data/expenses.csv", index=False)
+
+create_expenses_file()  # Call this function to ensure the file exists
 
 # Dashboard Functionality
 class UserAccount:
@@ -181,57 +188,56 @@ def profile_setup():
         if first_name and last_name and age and profession:
             st.session_state.update({"first_name": first_name, "last_name": last_name, "gender": gender, "age": age, "profession": profession, "is_profile_set": True})
             profile_data = pd.DataFrame([{"username": st.session_state.username, "first_name": first_name, "last_name": last_name, "gender": gender, "age": age, "profession": profession}])
-            if not os.path.exists("data/profiles.csv"):
-                profile_data.to_csv("data/profiles.csv", index=False)
-            else:
-                profile_data.to_csv("data/profiles.csv", mode="a", header=False, index=False)
-            st.success("Profile saved!")
-            st.experimental_rerun()
+            profile_data.to_csv("data/profiles.csv", index=False, mode='a', header=False)
+            st.success("Profile setup complete!")
         else:
-            st.error("Please complete all fields.")
+            st.error("Please fill in all the fields!")
 
-# Main Function
+# Login/Signup Process
 def login_signup():
-    st.title("Expense Manager Login")
-    
-    # Define login and signup tabs
-    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
-    
-    # Login tab
-    with tab_login:
-        st.subheader("Login to your account")
-        # Ensure unique keys for username and password inputs
-        username = st.text_input("Username", key="login_username_input")  
-        password = st.text_input("Password", type="password", key="login_password_input")  # Add unique key for password field
-        
+    st.title("Login / Signup")
+
+    option = st.radio("Select Option", ["Login", "Signup"])
+
+    if option == "Login":
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+
         if st.button("Login"):
             if authenticate(username, password):
                 st.session_state["username"] = username
                 st.session_state["logged_in"] = True
-                st.success("Login successful!")
-                expense_dashboard()
+                st.session_state["input_submitted"] = False  # Reset input submission flag
+                st.success("Logged in successfully.")
+                st.experimental_rerun()
             else:
-                st.error("Invalid username or password")
-    
-    # Signup tab
-    with tab_signup:
-        st.subheader("Create a new account")
-        # Ensure unique keys for username and password inputs in sign up tab
-        username = st.text_input("Username", key="signup_username_input")  
-        password = st.text_input("Password", type="password", key="signup_password_input")  # Add unique key for password field
-        
-        if st.button("Sign Up"):
-            if register_user(username, password):
-                st.success("Account created successfully! You can now log in.")
-            else:
-                st.error("Username already taken. Please choose a different one.")
+                st.error("Invalid username or password.")
 
+    elif option == "Signup":
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        confirm_password = st.text_input("Confirm Password", type="password")
 
-# Handle user login and setup
-if 'logged_in' in st.session_state and st.session_state.logged_in:
-    if not st.session_state.get("is_profile_set", False):
-        profile_setup()  # Allow profile setup if it's the user's first time logging in
+        if password == confirm_password and password != "":
+            if st.button("Signup"):
+                if register_user(username, password):
+                    st.success("Signup successful! You can now log in.")
+                else:
+                    st.error("Username already taken.")
+        else:
+            st.error("Passwords do not match or empty password.")
+            
+
+# Main Function
+def main():
+    if 'logged_in' in st.session_state and st.session_state.logged_in:
+        if not st.session_state.get("is_profile_set", False):
+            profile_setup()  # Allow profile setup if it's the user's first time logging in
+        else:
+            expense_dashboard()  # Show expense dashboard after profile setup
     else:
-        expense_dashboard()  # Show expense dashboard after profile setup
-else:
-    login_signup()
+        login_signup()  # Show login/signup options for non-logged-in users
+
+
+if __name__ == "__main__":
+    main()
