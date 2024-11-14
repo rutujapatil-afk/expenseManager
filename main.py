@@ -141,32 +141,33 @@ def expense_dashboard():
     with st.expander("SMS Classification"):
         st.subheader("SMS Classification")
         message = st.text_area("Paste your bank message here", key="sms_input")
+        
         if st.button("Analyze"):
             label = classify_message(message)
-        
+            
             if label == 'spam':
                 st.write("This message appears to be spam.")
             else:
                 st.write("Non-spam message detected.")
                 transaction_type, amount = extract_transaction_details(message)
-            
+                
                 if transaction_type:
                     st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
-                
-                    # Add Debit or Credit Transaction
-                    if transaction_type == 'debit':
-                        if st.button(f"Add debit of INR {amount:.2f} to transaction history"):
-                            user_account.debit(amount)  # Updates balance and adds to transactions
-                            st.success("Debit transaction added successfully.")
-                
-                    elif transaction_type == 'credit':
-                        if st.button(f"Add credit of INR {amount:.2f} to transaction history"):
-                            user_account.credit(amount)  # Updates balance and adds to transactions
-                            st.success("Credit transaction added successfully.")
-                
-                    # Display updated transaction history after each transaction
+                    
+                    # Handle Debit or Credit transaction
+                    if transaction_type == 'debit' and st.button(f"Add debit of INR {amount:.2f} to transaction history"):
+                        user_account.debit(amount)  # Debit the amount and save it
+                        st.success("Debit transaction added successfully.")
+                    
+                    elif transaction_type == 'credit' and st.button(f"Add credit of INR {amount:.2f} to transaction history"):
+                        user_account.credit(amount)  # Credit the amount and save it
+                        st.success("Credit transaction added successfully.")
+                    
+                    # Display updated transaction history
+                    user_account.transactions = pd.read_csv("data/expenses.csv")  # Reload the saved transactions
                     st.write("Updated Transaction History:")
                     st.dataframe(user_account.transactions)
+
 
 # Profile Setup for First-Time Login
 def profile_setup():
@@ -198,36 +199,34 @@ def login_signup():
     
     # Login tab
     with tab_login:
-        st.subheader("Login")
+        st.subheader("Login to your account")
         username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_password")
+        password = st.text_input("Password", type="password")
         if st.button("Login"):
             if authenticate(username, password):
-                st.session_state.update({"logged_in": True, "username": username})
-                st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values
-                st.experimental_rerun()
+                st.session_state["username"] = username
+                st.session_state["logged_in"] = True
+                st.success("Login successful!")
+                expense_dashboard()
             else:
-                st.error("Invalid username or password.")
-
+                st.error("Invalid username or password")
+    
     # Signup tab
     with tab_signup:
-        st.subheader("Sign Up")
-        new_username = st.text_input("Username", key="signup_username")
-        new_password = st.text_input("Password", type="password", key="signup_password")
+        st.subheader("Create a new account")
+        username = st.text_input("Username", key="signup_username")
+        password = st.text_input("Password", type="password")
         if st.button("Sign Up"):
-            if register_user(new_username, new_password):
-                st.success("Account created! Please log in.")
+            if register_user(username, password):
+                st.success("Account created successfully! You can now log in.")
             else:
-                st.error("Username already exists. Try a different one.")
+                st.error("Username already taken. Please choose a different one.")
 
-# Initialize the application
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-
-if st.session_state["logged_in"]:
+# Handle user login and setup
+if 'logged_in' in st.session_state and st.session_state.logged_in:
     if not st.session_state.get("is_profile_set", False):
-        profile_setup()
+        profile_setup()  # Allow profile setup if it's the user's first time logging in
     else:
-        expense_dashboard()
+        expense_dashboard()  # Show expense dashboard after profile setup
 else:
-    login_signup()  # This should be called only once here if the user is not logged in
+    login_signup()

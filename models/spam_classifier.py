@@ -14,15 +14,20 @@ nltk.download('stopwords')
 model_path = './models/spam_classifier_model.pkl'
 vectorizer_path = './models/tfidf_vectorizer.pkl'
 
-# Check if the model files exist before trying to load them
-if os.path.exists(model_path) and os.path.exists(vectorizer_path):
+# Load model and vectorizer, with error handling
+def load_model_and_vectorizer():
     try:
-        model = joblib.load(model_path)
-        vectorizer = joblib.load(vectorizer_path)
+        model = joblib.load(model_path) if os.path.exists(model_path) else None
+        vectorizer = joblib.load(vectorizer_path) if os.path.exists(vectorizer_path) else None
+        if not model or not vectorizer:
+            st.write("Model or Vectorizer files are missing!")
+            return None, None
+        return model, vectorizer
     except Exception as e:
         st.write(f"Error loading model or vectorizer: {e}")
-else:
-    st.write("Model files not found in the expected paths!")
+        return None, None
+
+model, vectorizer = load_model_and_vectorizer()
 
 # Initialize stopwords and stemmer
 stop_words = set(stopwords.words('english'))
@@ -48,35 +53,32 @@ def classify_message(message):
     """
     Classify a message as 'spam' or 'ham' (not spam) based on the model prediction.
     """
+    if not model or not vectorizer:
+        return "Error: Model or vectorizer not loaded."
+    
     cleaned = preprocess_message(message)
     vector = vectorizer.transform([cleaned]).toarray()
     prediction = model.predict(vector)[0]
     return 'spam' if prediction == 1 else 'ham'
 
 # Extract transaction details function
-# Regular expression for detecting amounts in the message (including decimals)
-amount_pattern = re.compile(r'\b(?:INR\s?)?([\d,]+\.\d{1,2})\b')
-
-# Extract transaction details function
 def extract_transaction_details(message):
     transaction_type = None
     # Check if it's a debit or credit
-    if debit_pattern.search(message):  # more specifically checks for debit-related words
+    if debit_pattern.search(message):
         transaction_type = 'debit'
-    elif credit_pattern.search(message):  # more specifically checks for credit-related words
+    elif credit_pattern.search(message):
         transaction_type = 'credit'
 
     # Search for the amount in the message
     amount_match = amount_pattern.search(message)
     if amount_match:
         amount_str = amount_match.group(1)
-        # Clean up the amount and ensure it's a float
-        amount = float(amount_str.replace(',', '').strip())  # Remove commas and extra spaces
+        amount = float(amount_str.replace(',', '').strip())
     else:
         amount = 0.0
 
     return transaction_type, amount
-
 
 # UserAccount class for managing user balance and transactions
 class UserAccount:
@@ -104,7 +106,6 @@ class UserAccount:
             transaction_history += f"{txn['type'].capitalize()}: INR {txn['amount']:.2f}\n"
         return transaction_history
 
-
 # Streamlit display function for the Expense Manager Dashboard
 def display_expense_manager(user_account):
     st.header("Expense Manager Dashboard")
@@ -131,7 +132,6 @@ def display_expense_manager(user_account):
             # Update the session state
             st.session_state.user_account = user_account
             st.success("Transaction added successfully!")
-
 
 # Streamlit display function for SMS classification interface
 def display_spam_detector(user_account):
@@ -175,7 +175,6 @@ def display_spam_detector(user_account):
     st.subheader(user_account.show_balance())
     st.subheader("Transaction History")
     st.text(user_account.show_transactions())
-
 
 # Initialize user account and manage session state for persistence
 if 'user_account' not in st.session_state:
