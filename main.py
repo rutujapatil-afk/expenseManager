@@ -180,7 +180,7 @@ def login_signup():
         st.title("Expense Manager Login")
         
         # Show only the login form initially
-        username = st.text_input("Email address or phone number", key="login_username")
+        username = st.text_input("Username", key="login_username")
         password = st.text_input("Password", type="password", key="login_password")
         
         if st.button("Log in"):
