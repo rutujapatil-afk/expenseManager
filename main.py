@@ -179,38 +179,33 @@ def login_signup():
     st.title("Expense Manager Login")
     
     if not st.session_state.get("logged_in", False):  # Only show login/signup tabs when user is not logged in
-        tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
+        # Show only the login form initially
+        username = st.text_input("Email address or phone number", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
+        
+        if st.button("Log in"):
+            if authenticate(username, password):
+                st.session_state.username = username
+                st.session_state.logged_in = True
+                st.success("Logged in successfully!")
+                st.experimental_rerun()
+            else:
+                st.error("Invalid credentials. Please try again.")
 
-        # Login Tab
-        with tab_login:
-            st.subheader("Log in to Expense Manager")
-            username = st.text_input("Email address or phone number", key="login_username")
-            password = st.text_input("Password", type="password", key="login_password")
-            if st.button("Log in"):
-                if authenticate(username, password):
-                    st.session_state.username = username
-                    st.session_state.logged_in = True
-                    st.success("Logged in successfully!")
-                    st.experimental_rerun()
-                else:
-                    st.error("Invalid credentials. Please try again.")
+        # Forgotten account link
+        if st.button("Forgotten account?"):
+            st.write("Please contact support.")
 
-            # Forgotten account link
-            if st.button("Forgotten account?"):
-                st.write("Please contact support.")
-
-            # Sign up link
-            if st.button("Sign up for Expense Manager"):
-                with tab_signup:
-                    st.subheader("Sign Up")
-                    new_username = st.text_input("Username", key="signup_username")
-                    new_password = st.text_input("Password", type="password", key="signup_password")
-                    if st.button("Sign Up"):
-                        if register_user(new_username, new_password):
-                            st.success("Account created! Please log in.")
-                        else:
-                            st.error("Username already exists. Try a different one.")
-
+        # Only show sign up when "Sign up for Expense Manager" is clicked
+        if st.button("Sign up for Expense Manager"):
+            with st.expander("Sign Up for Expense Manager"):
+                new_username = st.text_input("Username", key="signup_username")
+                new_password = st.text_input("Password", type="password", key="signup_password")
+                if st.button("Sign Up"):
+                    if register_user(new_username, new_password):
+                        st.success("Account created! Please log in.")
+                    else:
+                        st.error("Username already exists. Try a different one.")
     else:
         if not st.session_state.get("is_profile_set", False):
             profile_setup()
