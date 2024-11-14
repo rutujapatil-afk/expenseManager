@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import hashlib
 import os
-import re
 from datetime import date
 from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
@@ -178,37 +177,39 @@ def profile_setup():
 # Main Function
 def login_signup():
     st.title("Expense Manager Login")
-    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
-    with tab_login:
-        st.subheader("Login")
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_password")
-        if st.button("Login"):
-            if authenticate(username, password):
-                st.session_state.update({"logged_in": True, "username": username})
-                st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values
-                st.experimental_rerun()
-            else:
-                st.error("Invalid username or password.")
+    
+    if not st.session_state.get("logged_in", False):  # Only show login/signup tabs when user is not logged in
+        tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
 
-    with tab_signup:
-        st.subheader("Sign Up")
-        new_username = st.text_input("Username", key="signup_username")
-        new_password = st.text_input("Password", type="password", key="signup_password")
-        if st.button("Sign Up"):
-            if register_user(new_username, new_password):
-                st.success("Account created! Please log in.")
-            else:
-                st.error("Username already exists. Try a different one.")
+        # Login Tab
+        with tab_login:
+            st.subheader("Login")
+            username = st.text_input("Username", key="login_username")
+            password = st.text_input("Password", type="password", key="login_password")
+            if st.button("Login"):
+                if authenticate(username, password):
+                    st.session_state.update({"logged_in": True, "username": username})
+                    # Check if profile exists after successful login
+                    st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values
+                    st.experimental_rerun()
+                else:
+                    st.error("Invalid username or password.")
 
-# Initialize the application
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-
-if st.session_state["logged_in"]:
-    if not st.session_state.get("is_profile_set", False):
-        profile_setup()
+        # Sign Up Tab
+        with tab_signup:
+            st.subheader("Sign Up")
+            new_username = st.text_input("Username", key="signup_username")
+            new_password = st.text_input("Password", type="password", key="signup_password")
+            if st.button("Sign Up"):
+                if register_user(new_username, new_password):
+                    st.success("Account created! Please log in.")
+                else:
+                    st.error("Username already exists. Try a different one.")
     else:
-        expense_dashboard()
-else:
+        if not st.session_state.get("is_profile_set", False):
+            profile_setup()
+        else:
+            expense_dashboard()
+
+if __name__ == "__main__":
     login_signup()
