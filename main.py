@@ -80,6 +80,7 @@ class UserAccount:
 # Initialize a user account instance
 user_account = UserAccount()
 
+# Updated expense_dashboard function
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
 
@@ -120,7 +121,10 @@ def expense_dashboard():
                     expenses = expenses.drop(selected_indices)
                     expenses.to_csv("data/expenses.csv", index=False)
                     st.success("Selected transactions deleted.")
-                    st.experimental_rerun()
+                    try:
+                        st.experimental_rerun()
+                    except AttributeError:
+                        st.error("An error occurred while trying to rerun the app. Please try refreshing the page.")
 
     # Investment Policy Suggestions Section
     if st.session_state.get("is_profile_set", False):
@@ -152,7 +156,11 @@ def expense_dashboard():
                     elif transaction_type == 'credit':
                         user_account.credit(amount)
                         st.success("Transaction credited.")
-                    st.experimental_rerun()
+                    try:
+                        st.experimental_rerun()
+                    except AttributeError:
+                        st.error("An error occurred while trying to rerun the app. Please try refreshing the page.")
+
 
 # Profile Setup for First-Time Login
 def profile_setup():
