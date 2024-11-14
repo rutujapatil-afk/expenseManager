@@ -122,7 +122,7 @@ def expense_dashboard():
                     st.experimental_rerun()
 
     # Investment Policy Suggestions Section
-    if st.session_state.get("is_profile_set", False):
+    if "is_profile_set" in st.session_state and st.session_state.is_profile_set:
         with st.expander("Investment Policy Suggestions (ML Models)"):
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
@@ -182,10 +182,10 @@ def login_signup():
         st.session_state.signup_visible = False
 
     if st.session_state.signup_visible:
-        # Sign Up form is shown when user clicks on "Sign up for Expense Manager"
-        st.subheader("Sign Up")
-        username_signup = st.text_input("Create a Username", key="signup_username")
-        password_signup = st.text_input("Create a Password", type="password", key="signup_password")
+        # Sign Up form is shown when user clicks "Sign up for Expense Manager"
+        st.subheader("Create an Account")
+        username_signup = st.text_input("Username", key="username_signup")
+        password_signup = st.text_input("Password", type="password", key="password_signup")
         if st.button("Sign Up"):
             if register_user(username_signup, password_signup):
                 st.success("Account created! Please log in.")
@@ -201,7 +201,10 @@ def login_signup():
         if st.button("Login"):
             if authenticate(username, password):
                 st.session_state.username = username
-                expense_dashboard()
+                if "is_profile_set" not in st.session_state or not st.session_state.is_profile_set:
+                    profile_setup()
+                else:
+                    expense_dashboard()
             else:
                 st.error("Invalid username or password.")
         if st.button("Sign up for Expense Manager"):
