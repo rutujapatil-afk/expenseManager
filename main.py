@@ -109,6 +109,7 @@ def login_page():
         if authenticate(username, password):
             st.session_state.username = username
             st.session_state.logged_in = True
+            st.session_state.is_profile_set = True  # Set profile to true to allow access to all sections
             st.success("Login successful!")
             st.experimental_rerun()  # Refresh the page to show the dashboard
         else:
@@ -188,20 +189,13 @@ def expense_dashboard():
                         st.error("An error occurred while trying to rerun the app. Please try refreshing the page.")
 
     # Investment Policy Suggestions Section
-    if st.session_state.get("is_profile_set", False):
-        with st.expander("Investment Policy Suggestions (ML Models)") :
-            st.subheader("Investment Suggestions")
-            monthly_investment, investment_duration = get_user_input()
-            if st.session_state.get("input_submitted", False) and st.button("Analyze"):
-                recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-                if recommended_policy is not None and suitable_policies is not None:
-                    visualize_policy_comparison(suitable_policies)
-                display_policy_suggestion(monthly_investment, investment_duration)
+    if st.session_state.get("is_profile_set", False):  # Show only if profile is set
+        with st.expander("Investment Policy Suggestions"):
+            display_policy_suggestion(policy_data)  # Add your ML model output here
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
-        st.subheader("SMS Classification")
-        message = st.text_area("Paste your bank SMS here:")
+        message = st.text_area("Enter bank SMS here:")
         if st.button("Classify"):
             if message:
                 result, transaction_details = classify_message(message)
