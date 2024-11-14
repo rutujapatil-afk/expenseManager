@@ -177,32 +177,35 @@ def profile_setup():
 # Main Function
 def login_signup():
     st.title("Expense Manager Login")
-    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
-    
-    with tab_login:
+
+    if "signup_visible" not in st.session_state:
+        st.session_state.signup_visible = False
+
+    if st.session_state.signup_visible:
+        # Sign Up form is shown when user clicks on "Sign up for Expense Manager"
+        st.subheader("Sign Up")
+        username_signup = st.text_input("Create a Username", key="signup_username")
+        password_signup = st.text_input("Create a Password", type="password", key="signup_password")
+        if st.button("Sign Up"):
+            if register_user(username_signup, password_signup):
+                st.success("Account created! Please log in.")
+                st.session_state.signup_visible = False
+            else:
+                st.error("Username already taken or invalid.")
+    else:
+        # Default Login form
         st.subheader("Login")
         username = st.text_input("Username", key="login_username")
         password = st.text_input("Password", type="password", key="login_password")
+
         if st.button("Login"):
             if authenticate(username, password):
                 st.session_state.username = username
-                st.success("Login successful!")
                 expense_dashboard()
             else:
                 st.error("Invalid username or password.")
-
-        # Forgotten account & Sign Up links
-        st.markdown("[Forgotten account?](#)")
         if st.button("Sign up for Expense Manager"):
-            with tab_signup:
-                st.subheader("Sign Up")
-                username_signup = st.text_input("Create a Username", key="signup_username")
-                password_signup = st.text_input("Create a Password", type="password", key="signup_password")
-                if st.button("Sign Up"):
-                    if register_user(username_signup, password_signup):
-                        st.success("Account created! Please log in.")
-                    else:
-                        st.error("Username already taken or invalid.")
+            st.session_state.signup_visible = True
 
 # Running the main function
 if __name__ == "__main__":
