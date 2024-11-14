@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import hashlib
 import os
-import re
 from datetime import date
 from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
@@ -185,48 +184,18 @@ def profile_setup():
                 profile_data.to_csv("data/profiles.csv", index=False)
             else:
                 profile_data.to_csv("data/profiles.csv", mode="a", header=False, index=False)
-            st.success("Profile saved!")
-            st.experimental_rerun()
+            st.success("Profile setup successfully!")
         else:
-            st.error("Please complete all fields.")
+            st.error("Please fill out all fields.")
 
-# Main Function
-def login_signup():
-    st.title("Expense Manager Login")
-    
-    # Define login and signup tabs
-    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
-    
-    # Login tab
-    with tab_login:
-        st.subheader("Login to your account")
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password")
-        if st.button("Login"):
-            if authenticate(username, password):
-                st.session_state["username"] = username
-                st.session_state["logged_in"] = True
-                st.success("Login successful!")
-                expense_dashboard()
-            else:
-                st.error("Invalid username or password")
-    
-    # Signup tab
-    with tab_signup:
-        st.subheader("Create a new account")
-        username = st.text_input("Username", key="signup_username")
-        password = st.text_input("Password", type="password")
-        if st.button("Sign Up"):
-            if register_user(username, password):
-                st.success("Account created successfully! You can now log in.")
-            else:
-                st.error("Username already taken. Please choose a different one.")
-
-# Handle user login and setup
-if 'logged_in' in st.session_state and st.session_state.logged_in:
-    if not st.session_state.get("is_profile_set", False):
-        profile_setup()  # Allow profile setup if it's the user's first time logging in
+# Main Application Flow
+def main():
+    if "username" not in st.session_state:
+        login_page()
+    elif "is_profile_set" in st.session_state and not st.session_state.is_profile_set:
+        profile_setup()
     else:
-        expense_dashboard()  # Show expense dashboard after profile setup
-else:
-    login_signup()
+        expense_dashboard()
+
+if __name__ == "__main__":
+    main()
