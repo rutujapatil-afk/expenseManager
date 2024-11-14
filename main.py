@@ -176,9 +176,9 @@ def profile_setup():
 
 # Main Function
 def login_signup():
-    st.title("Expense Manager Login")
-    
     if not st.session_state.get("logged_in", False):  # Only show login/signup tabs when user is not logged in
+        st.title("Expense Manager Login")
+        
         # Show only the login form initially
         username = st.text_input("Email address or phone number", key="login_username")
         password = st.text_input("Password", type="password", key="login_password")
@@ -190,27 +190,31 @@ def login_signup():
                 st.success("Logged in successfully!")
                 st.experimental_rerun()
             else:
-                st.error("Invalid credentials. Please try again.")
-
-        # Forgotten account link
-        if st.button("Forgotten account?"):
-            st.write("Please contact support.")
-
-        # Only show sign up when "Sign up for Expense Manager" is clicked
+                st.error("Invalid username or password.")
+        
         if st.button("Sign up for Expense Manager"):
-            with st.expander("Sign Up for Expense Manager"):
-                new_username = st.text_input("Username", key="signup_username")
-                new_password = st.text_input("Password", type="password", key="signup_password")
-                if st.button("Sign Up"):
-                    if register_user(new_username, new_password):
-                        st.success("Account created! Please log in.")
-                    else:
-                        st.error("Username already exists. Try a different one.")
+            st.session_state.signup_mode = True
+            st.experimental_rerun()
+
+    elif st.session_state.get("signup_mode", False):  # Signup Mode
+        st.title("Sign Up for Expense Manager")
+
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        
+        if st.button("Sign up"):
+            if register_user(username, password):
+                st.session_state.username = username
+                st.session_state.logged_in = True
+                st.success("Account created successfully!")
+                st.experimental_rerun()
+            else:
+                st.error("Username already exists. Please choose another one.")
+                
     else:
-        if not st.session_state.get("is_profile_set", False):
-            profile_setup()
-        else:
-            expense_dashboard()
+        # If logged in, show the Dashboard
+        expense_dashboard()
+
 
 if __name__ == "__main__":
     login_signup()
