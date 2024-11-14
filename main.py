@@ -3,14 +3,7 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-from models.policy_suggestions import (
-    get_user_input,
-    recommend_policy,
-    visualize_policy_comparison,
-    policy_data,
-    model_spending,
-    display_policy_suggestion
-)
+from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
 
 # User Authentication Functions
@@ -86,7 +79,7 @@ class UserAccount:
 # Initialize a user account instance
 user_account = UserAccount()
 
-# Updated login page function
+# Login page function
 def login_page():
     st.title("Log in to Expense Manager")
     st.write("You must log in to continue.")
@@ -132,7 +125,7 @@ def signup_page():
     if st.button("Already have an account? Log in"):
         st.session_state.show_signup = False  # Hide the signup page and show login form
 
-# Updated expense_dashboard function
+# Expense Dashboard Function
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
 
@@ -189,7 +182,7 @@ def expense_dashboard():
                     visualize_policy_comparison(suitable_policies)
                 display_policy_suggestion(monthly_investment, investment_duration)
 
-    # SMS Classification Section with improved error handling
+    # SMS Classification Section
     with st.expander("SMS Classification"):
         message = st.text_area("Enter bank SMS here:", key="sms_input")
         
@@ -201,23 +194,24 @@ def expense_dashboard():
                     
                     if result == "spam":
                         st.write("This message appears to be spam.")
-                    else:
+                    elif result == "non-spam":
                         st.write("This message contains a valid financial transaction.")
                         st.write(transaction_details)
+                    else:
+                        st.warning("The message could not be classified. Please check the input.")
                 except Exception as e:
                     st.error(f"An error occurred during classification: {e}")
             else:
                 st.warning("Please enter a valid SMS message.")
 
-# Main Logic to control flow of pages
+# Main page route
 def main():
-    if "logged_in" not in st.session_state or not st.session_state.get("logged_in", False):
-        if "show_signup" not in st.session_state or not st.session_state["show_signup"]:
-            login_page()  # If the user is not logged in, show the login page
-        else:
-            signup_page()  # If show_signup is true, show signup page
+    if "logged_in" not in st.session_state or not st.session_state.logged_in:
+        login_page()
+    elif "show_signup" in st.session_state and st.session_state.show_signup:
+        signup_page()
     else:
-        expense_dashboard()  # Display the dashboard once the user is logged in
+        expense_dashboard()
 
 if __name__ == "__main__":
     main()
