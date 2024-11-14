@@ -109,24 +109,14 @@ def expense_dashboard():
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
         st.dataframe(expenses)
 
-        # Deletion option for multiple transactions
-        if not expenses.empty:
-            st.subheader("Delete Multiple Transactions")
-            delete_buttons = [st.checkbox(f"{row['category']} | {row['amount']} | {row['date']} | {row['description']}", key=f"checkbox_{index}") for index, row in expenses.iterrows()]
-            if st.button("🗑️ Delete Selected Transactions"):
-                selected_indices = [i for i, checked in enumerate(delete_buttons) if checked]
-                if selected_indices:
-                    expenses = expenses.drop(selected_indices)
-                    expenses.to_csv("data/expenses.csv", index=False)
-                    st.success("Selected transactions deleted.")
-                    st.experimental_rerun()
-
     # Investment Policy Suggestions Section
-    if st.session_state.get("is_profile_set", False):
+    profile_loaded = st.session_state.get("is_profile_set", False)
+    if profile_loaded:
         with st.expander("Investment Policy Suggestions (ML Models)"):
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
-            if st.session_state.get("input_submitted", False) and st.button("Analyze"):
+            if st.button("Analyze"):
+                st.session_state.input_submitted = True
                 recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
                 if recommended_policy is not None and suitable_policies is not None:
                     visualize_policy_comparison(suitable_policies)
@@ -187,6 +177,7 @@ def login_signup():
             if authenticate(username, password):
                 st.session_state.username = username
                 st.session_state.logged_in = True
+                st.session_state.is_profile_set = check_profile_set(username)
                 st.success("Logged in successfully!")
                 st.experimental_rerun()
             else:
@@ -206,15 +197,35 @@ def login_signup():
             if register_user(username, password):
                 st.session_state.username = username
                 st.session_state.logged_in = True
-                st.success("Account created successfully!")
+                st.session_state.signup_mode = False
+                st.session_state.is_profile_set = False
+                st.success("Signup successful!")
                 st.experimental_rerun()
             else:
-                st.error("Username already exists. Please choose another one.")
-                
-    else:
-        # If logged in, show the Dashboard
-        expense_dashboard()
+                st.error("Username already taken. Please try a different one.")
 
+# Check if profile is already set for a logged-in user
+def check_profile_set(username):
+    if os.path.exists("data/profiles.csv"):
+        profiles = pd.read_csv("data/profiles.csv")
+        return username in profiles["username"].values
+    return False
 
 if __name__ == "__main__":
-    login_signup()
+    st.set_page_config(page_title="Expense Manager", layout="wide")
+    
+    # Initialize session state variables
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+
+    if "signup_mode" not in st.session_state:
+        st.session_state.signup_mode = False
+
+    # Check if user is logged in and if profile is set
+    if st.session_state.get("logged_in", False):
+        if not st.session_state.get("is_profile_set", False):
+            profile_setup()
+        else:
+            expense_dashboard()
+    else:
+        login_signup()
