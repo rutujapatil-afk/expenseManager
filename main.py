@@ -120,6 +120,10 @@ def signup_page():
                 st.error("Username already taken. Try another one.")
         else:
             st.error("Passwords do not match.")
+    
+    # Option to go back to the login page
+    if st.button("Already have an account? Log in"):
+        st.session_state.show_signup = False  # Hide the signup page and show login form
 
 # Updated expense_dashboard function
 def expense_dashboard():
@@ -192,14 +196,14 @@ def expense_dashboard():
                 st.write("Non-spam message detected.")
                 transaction_type, amount = extract_transaction_details(message)
                 
-                if transaction_type:
-                    st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
-                    
-                    # Handle Debit or Credit transaction
-                    if transaction_type == 'debit' and st.session_state.get('balance', 0) >= amount:
+                if transaction_type and amount:
+                    st.write(f"Transaction detected: {transaction_type} of INR {amount}")
+                    if transaction_type == 'debit':
                         user_account.debit(amount)
                     elif transaction_type == 'credit':
                         user_account.credit(amount)
+                else:
+                    st.write("No valid transaction detected in the message.")
 
 # Main entry point
 if "logged_in" not in st.session_state:
