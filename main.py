@@ -100,7 +100,7 @@ def login_page():
 
     # Option to navigate to the signup process
     if st.button("Don't have an account?"):
-        signup_page()
+        st.session_state.show_signup = True  # Trigger showing the signup form
 
 # Signup page function
 def signup_page():
@@ -115,7 +115,7 @@ def signup_page():
         if new_password == confirm_password:
             if register_user(new_username, new_password):
                 st.success("Registration successful! You can now log in.")
-                st.button("Log in")  # Trigger login button after registration
+                st.session_state.show_signup = False  # Reset the show_signup state
             else:
                 st.error("Username already taken. Try another one.")
         else:
@@ -201,11 +201,17 @@ def expense_dashboard():
                     elif transaction_type == 'credit':
                         user_account.credit(amount)
 
-# Main code flow
-if 'logged_in' not in st.session_state:
+# Main entry point
+if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+
+if "show_signup" not in st.session_state:
+    st.session_state.show_signup = False
 
 if st.session_state.logged_in:
     expense_dashboard()
 else:
-    login_page()
+    if st.session_state.show_signup:
+        signup_page()
+    else:
+        login_page()
