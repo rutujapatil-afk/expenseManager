@@ -179,21 +179,21 @@ def expense_dashboard():
         sms_input = st.text_area("Enter SMS here", height=150, placeholder="Type your SMS message here...")
 
         if sms_input:
-            try:
-                category, transaction = classify_message(sms_input)
-                
-                if category:
-                    st.write(f"Category: {category}")
-                else:
-                    st.warning("Unable to determine category from the SMS.")
-
-                if transaction:
-                    st.write(f"Transaction details: {transaction}")
-                else:
-                    st.warning("No transaction details found in the SMS.")
+            if st.button("Analyze"):
+                try:
+                    category, transaction = classify_message(sms_input)
                     
-            except Exception as e:
-                st.error(f"An error occurred during SMS classification: {str(e)}")
+                    if category:
+                        st.write(f"Category: {category}")
+                    else:
+                        st.warning("Unable to determine category from the SMS.")
+
+                    if transaction:
+                        st.write(f"Transaction details: {transaction}")
+                    else:
+                        st.warning("No transaction details found in the SMS.")
+                except Exception as e:
+                    st.error(f"An error occurred during SMS classification: {str(e)}")
 
 # Main entry point
 if "logged_in" not in st.session_state:
@@ -204,8 +204,7 @@ if "show_signup" not in st.session_state:
 
 if st.session_state.logged_in:
     expense_dashboard()
+elif st.session_state.show_signup:
+    signup_page()
 else:
-    if st.session_state.show_signup:
-        signup_page()
-    else:
-        login_page()
+    login_page()
