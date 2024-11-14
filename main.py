@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import hashlib
 import os
-import re
 from datetime import date
 from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
@@ -185,53 +184,23 @@ def profile_setup():
                 profile_data.to_csv("data/profiles.csv", index=False)
             else:
                 profile_data.to_csv("data/profiles.csv", mode="a", header=False, index=False)
-            st.success("Profile saved!")
+            st.success("Profile saved successfully!")
             st.experimental_rerun()
-        else:
-            st.error("Please complete all fields.")
 
-# Main Function
-def login_signup():
-    st.title("Expense Manager Login")
-    
-    # Define login and signup tabs
-    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
-    
-    # Login tab
-    with tab_login:
-        st.subheader("Login to your account")
-        # Ensure unique keys for username and password inputs
-        username = st.text_input("Username", key="login_username_input")  
-        password = st.text_input("Password", type="password", key="login_password_input")  # Add unique key for password field
-        
-        if st.button("Login"):
-            if authenticate(username, password):
-                st.session_state["username"] = username
-                st.session_state["logged_in"] = True
-                st.success("Login successful!")
-                expense_dashboard()
-            else:
-                st.error("Invalid username or password")
-    
-    # Signup tab
-    with tab_signup:
-        st.subheader("Create a new account")
-        # Ensure unique keys for username and password inputs in sign up tab
-        username = st.text_input("Username", key="signup_username_input")  
-        password = st.text_input("Password", type="password", key="signup_password_input")  # Add unique key for password field
-        
-        if st.button("Sign Up"):
-            if register_user(username, password):
-                st.success("Account created successfully! You can now log in.")
-            else:
-                st.error("Username already taken. Please choose a different one.")
+# Main Application Flow
+def main():
+    st.title("Welcome to the Expense Manager")
 
+    if "username" not in st.session_state:
+        st.session_state.username = ""
 
-# Handle user login and setup
-if 'logged_in' in st.session_state and st.session_state.logged_in:
-    if not st.session_state.get("is_profile_set", False):
-        profile_setup()  # Allow profile setup if it's the user's first time logging in
+    if st.session_state.username == "":
+        login_or_signup()
+    elif not st.session_state.get("is_profile_set", False):
+        profile_setup()  # Prompt user to complete profile setup if not done
     else:
-        expense_dashboard()  # Show expense dashboard after profile setup
-else:
-    login_signup()
+        expense_dashboard()  # Show dashboard if profile is set
+
+# Running the main app
+if __name__ == "__main__":
+    main()
