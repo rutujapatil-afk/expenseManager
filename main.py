@@ -2,10 +2,9 @@ import streamlit as st
 import pandas as pd
 import hashlib
 import os
-import re
-from datetime import date
 from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
+from datetime import date
 
 # User Authentication Functions
 def hash_password(password):
@@ -87,7 +86,7 @@ def expense_dashboard():
     st.header(f"Current Balance: INR {user_account.balance:.2f}")
     
     # Welcome message
-    st.header(f"Welcome, {st.session_state.username}!")
+    st.header(f"Welcome, {st.session_state.username}! The Expense Manager")
 
     # Expense Management Section
     with st.expander("Expense Management"):
@@ -179,32 +178,35 @@ def profile_setup():
 def login_signup():
     st.title("Expense Manager Login")
     tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
+    
     with tab_login:
         st.subheader("Login")
         username = st.text_input("Username", key="login_username")
         password = st.text_input("Password", type="password", key="login_password")
         if st.button("Login"):
             if authenticate(username, password):
-                st.session_state.update({"logged_in": True, "username": username})
-                st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values
-                st.experimental_rerun()
+                st.session_state.username = username
+                st.success("Login successful!")
+                expense_dashboard()
             else:
-                st.error("Invalid username or password")
-    with tab_signup:
-        st.subheader("Sign Up")
-        new_username = st.text_input("New Username", key="signup_username")
-        new_password = st.text_input("New Password", type="password", key="signup_password")
-        confirm_password = st.text_input("Confirm Password", type="password", key="confirm_signup_password")
-        if st.button("Sign Up"):
-            if new_password == confirm_password:
-                if register_user(new_username, new_password):
-                    st.success("Account created successfully! Please log in.")
-                else:
-                    st.error("Username already exists.")
-            else:
-                st.error("Passwords do not match.")
+                st.error("Invalid username or password.")
 
-if "logged_in" in st.session_state and st.session_state["logged_in"]:
-    expense_dashboard()
-else:
-    login_signup()
+        # Forgotten account & Sign Up links
+        st.markdown("[Forgotten account?](#)")
+        if st.button("Sign up for Expense Manager"):
+            with tab_signup:
+                st.subheader("Sign Up")
+                username_signup = st.text_input("Create a Username", key="signup_username")
+                password_signup = st.text_input("Create a Password", type="password", key="signup_password")
+                if st.button("Sign Up"):
+                    if register_user(username_signup, password_signup):
+                        st.success("Account created! Please log in.")
+                    else:
+                        st.error("Username already taken or invalid.")
+
+# Running the main function
+if __name__ == "__main__":
+    if "username" in st.session_state:
+        expense_dashboard()
+    else:
+        login_signup()
