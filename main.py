@@ -97,13 +97,13 @@ def expense_dashboard():
         expense_date = st.date_input("Date", value=date.today())
         description = st.text_input("Enter Description", "") if category == "Others" else ""
 
-        if st.button("Add Expense"):
+        if st.button("Add Expense", key="add_expense"):
             expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
             expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
             expenses = pd.concat([expenses, expense_data], ignore_index=True)
             expenses.to_csv("data/expenses.csv", index=False)
             st.success(f"Expense of {amount} in category {category} added.")
-            user_account.debit(amount, description=description if description else category)  # Update balance
+            user_account.debit(amount, description=description if description else category)
 
         st.subheader("Your Expenses")
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
@@ -115,7 +115,7 @@ def expense_dashboard():
         with st.expander("Investment Policy Suggestions (ML Models)"):
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
-            if st.button("Analyze"):
+            if st.button("Analyze Investment", key="analyze_investment"):
                 st.session_state.input_submitted = True
                 recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
                 if recommended_policy is not None and suitable_policies is not None:
@@ -125,8 +125,8 @@ def expense_dashboard():
     # SMS Classification Section
     with st.expander("SMS Classification"):
         st.subheader("SMS Classification")
-        message = st.text_area("Paste your bank message here", key="sms_input")
-        if st.button("Analyze"):
+        message = st.text_area("Paste your bank message here", key="sms_input_unique")
+        if st.button("Analyze SMS", key="analyze_sms_button"):
             label = classify_message(message)
             if label == 'spam':
                 st.write("This message appears to be spam.")
@@ -135,7 +135,7 @@ def expense_dashboard():
                 transaction_type, amount = extract_transaction_details(message)
                 if transaction_type:
                     st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
-                    if transaction_type == 'debit' and st.button(f"Add debit of INR {amount:.2f} to transaction history"):
+                    if transaction_type == 'debit' and st.button(f"Add debit of INR {amount:.2f} to transaction history", key="debit_transaction_button"):
                         user_account.debit(amount)
                         st.success("Transaction added.")
                     elif transaction_type == 'credit':
@@ -173,7 +173,7 @@ def login_signup():
         username = st.text_input("Username", key="login_username")
         password = st.text_input("Password", type="password", key="login_password")
         
-        if st.button("Log in"):
+        if st.button("Log in", key="login_button"):
             if authenticate(username, password):
                 st.session_state.username = username
                 st.session_state.logged_in = True
@@ -183,7 +183,7 @@ def login_signup():
             else:
                 st.error("Invalid username or password.")
         
-        if st.button("Sign up for Expense Manager"):
+        if st.button("Sign up for Expense Manager", key="signup_button"):
             st.session_state.signup_mode = True
             st.experimental_rerun()
 
@@ -193,39 +193,30 @@ def login_signup():
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         
-        if st.button("Sign up"):
+        if st.button("Sign up", key="register_button"):
             if register_user(username, password):
                 st.session_state.username = username
                 st.session_state.logged_in = True
-                st.session_state.signup_mode = False
-                st.session_state.is_profile_set = False
-                st.success("Signup successful!")
+                st.success("Account created successfully!")
                 st.experimental_rerun()
             else:
-                st.error("Username already taken. Please try a different one.")
+                st.error("Username already exists. Please choose a different one.")
 
-# Check if profile is already set for a logged-in user
 def check_profile_set(username):
-    if os.path.exists("data/profiles.csv"):
-        profiles = pd.read_csv("data/profiles.csv")
-        return username in profiles["username"].values
-    return False
+    if not os.path.exists("data/profiles.csv"):
+        return False
+    profiles = pd.read_csv("data/profiles.csv")
+    return username in profiles["username"].values
+
+# Main App Logic
+def main():
+    if not st.session_state.get("logged_in", False):
+        login_signup()
+    else:
+        if st.session_state.get("is_profile_set", False):
+            expense_dashboard()
+        else:
+            profile_setup()
 
 if __name__ == "__main__":
-    st.set_page_config(page_title="Expense Manager", layout="wide")
-    
-    # Initialize session state variables
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-
-    if "signup_mode" not in st.session_state:
-        st.session_state.signup_mode = False
-
-    # Check if user is logged in and if profile is set
-    if st.session_state.get("logged_in", False):
-        if not st.session_state.get("is_profile_set", False):
-            profile_setup()
-        else:
-            expense_dashboard()
-    else:
-        login_signup()
+    main()
