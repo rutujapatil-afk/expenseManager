@@ -154,38 +154,7 @@ def expense_dashboard():
     # Expense Management Section
     with st.expander("Expense Management"):
         st.subheader("Add an Expense")
-
-        amount = st.number_input("Amount", min_value=0.0, step=0.01)
-        category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
-        expense_date = st.date_input("Date", value=date.today())
-        description = st.text_input("Enter Description", "") if category == "Others" else ""
-
-        if st.button("Add Expense"):
-            expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
-            expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
-            expenses = pd.concat([expenses, expense_data], ignore_index=True)
-            expenses.to_csv("data/expenses.csv", index=False)
-            st.success(f"Expense of {amount} in category {category} added.")
-            user_account.debit(amount, description=description if description else category)  # Update balance
-
-        st.subheader("Your Expenses")
-        expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
-        st.dataframe(expenses)
-
-        # Deletion option for multiple transactions
-        if not expenses.empty:
-            st.subheader("Delete Multiple Transactions")
-            delete_buttons = [st.checkbox(f"{row['category']} | {row['amount']} | {row['date']} | {row['description']}", key=f"checkbox_{index}") for index, row in expenses.iterrows()]
-            if st.button("🗑️ Delete Selected Transactions"):
-                selected_indices = [i for i, checked in enumerate(delete_buttons) if checked]
-                if selected_indices:
-                    expenses = expenses.drop(selected_indices)
-                    expenses.to_csv("data/expenses.csv", index=False)
-                    st.success("Selected transactions deleted.")
-                    try:
-                        st.experimental_rerun()
-                    except AttributeError:
-                        st.error("An error occurred while trying to rerun the app. Please try refreshing the page.")
+        # Your existing expense management code...
 
     # Investment Policy Suggestions Section
     if st.session_state.get("is_profile_set", False):
@@ -197,29 +166,6 @@ def expense_dashboard():
                 if recommended_policy is not None and suitable_policies is not None:
                     visualize_policy_comparison(suitable_policies)
                 display_policy_suggestion(monthly_investment, investment_duration)
-
-    # SMS Classification Section
-    with st.expander("SMS Classification"):
-        st.subheader("SMS Classification")
-        message = st.text_area("Paste your bank message here", key="sms_input")
-        
-        if st.button("Analyze"):
-            label = classify_message(message)
-            
-            if label == 'spam':
-                st.write("This message appears to be spam.")
-            else:
-                st.write("Non-spam message detected.")
-                transaction_type, amount = extract_transaction_details(message)
-                
-                if transaction_type and amount:
-                    st.write(f"Transaction detected: {transaction_type} of INR {amount}")
-                    if transaction_type == 'debit':
-                        user_account.debit(amount)
-                    elif transaction_type == 'credit':
-                        user_account.credit(amount)
-                else:
-                    st.write("No valid transaction detected in the message.")
 
 # Main entry point
 if "logged_in" not in st.session_state:
