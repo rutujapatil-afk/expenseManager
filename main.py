@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import hashlib
 import os
+import re
 from datetime import date
 from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
@@ -50,7 +51,7 @@ def register_user(username, password):
     save_user(username, password)
     return True
 
-# User Account Class
+# Dashboard Functionality
 class UserAccount:
     def __init__(self, initial_balance=10000.0):
         self.balance = initial_balance
@@ -79,52 +80,13 @@ class UserAccount:
 # Initialize a user account instance
 user_account = UserAccount()
 
-# Updated login page function
-def login_page():
-    st.title("Log in to Expense Manager")
-    st.write("You must log in to continue.")
-
-    username = st.text_input("Username", placeholder="Enter your username", label_visibility="collapsed")
-    password = st.text_input("Password", type="password", placeholder="Enter your password", label_visibility="collapsed")
-
-    if st.button("Log in"):
-        if authenticate(username, password):
-            st.session_state.username = username
-            st.session_state.logged_in = True
-            st.success("Login successful!")
-            st.experimental_rerun()  # Refresh the page to show the dashboard
-        else:
-            st.error("Invalid username or password")
-
-    if st.button("Don't have an account?"):
-        st.session_state.show_signup = True
-
-# Signup page function
-def signup_page():
-    st.title("Sign Up for Expense Manager")
-    st.write("Create an account to start managing your expenses.")
-
-    new_username = st.text_input("Username (new user)", placeholder="Create a new username", label_visibility="collapsed")
-    new_password = st.text_input("Password (new user)", type="password", placeholder="Create a new password", label_visibility="collapsed")
-    confirm_password = st.text_input("Confirm Password", type="password", placeholder="Re-enter your password", label_visibility="collapsed")
-
-    if st.button("Sign up"):
-        if new_password == confirm_password:
-            if register_user(new_username, new_password):
-                st.success("Registration successful! You can now log in.")
-                st.session_state.show_signup = False
-            else:
-                st.error("Username already taken. Try another one.")
-        else:
-            st.error("Passwords do not match.")
-    
-    if st.button("Already have an account? Log in"):
-        st.session_state.show_signup = False
-
-# Expense Dashboard Function
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
+
+    # Display current balance
     st.header(f"Current Balance: INR {user_account.balance:.2f}")
+    
+    # Welcome message
     st.header(f"Welcome, {st.session_state.username}!")
 
     # Expense Management Section
@@ -142,12 +104,13 @@ def expense_dashboard():
             expenses = pd.concat([expenses, expense_data], ignore_index=True)
             expenses.to_csv("data/expenses.csv", index=False)
             st.success(f"Expense of {amount} in category {category} added.")
-            user_account.debit(amount, description=description if description else category)
+            user_account.debit(amount, description=description if description else category)  # Update balance
 
         st.subheader("Your Expenses")
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
         st.dataframe(expenses)
 
+        # Deletion option for multiple transactions
         if not expenses.empty:
             st.subheader("Delete Multiple Transactions")
             delete_buttons = [st.checkbox(f"{row['category']} | {row['amount']} | {row['date']} | {row['description']}", key=f"checkbox_{index}") for index, row in expenses.iterrows()]
@@ -157,10 +120,7 @@ def expense_dashboard():
                     expenses = expenses.drop(selected_indices)
                     expenses.to_csv("data/expenses.csv", index=False)
                     st.success("Selected transactions deleted.")
-                    try:
-                        st.experimental_rerun()
-                    except AttributeError:
-                        st.error("An error occurred while trying to rerun the app. Please try refreshing the page.")
+                    st.experimental_rerun()
 
     # Investment Policy Suggestions Section
     if st.session_state.get("is_profile_set", False):
@@ -175,36 +135,80 @@ def expense_dashboard():
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
-        st.subheader("Classify SMS Messages")
-        sms_input = st.text_area("Enter SMS here", height=150, placeholder="Type your SMS message here...")
+        st.subheader("SMS Classification")
+        message = st.text_area("Paste your bank message here", key="sms_input")
+        if st.button("Analyze"):
+            label = classify_message(message)
+            if label == 'spam':
+                st.write("This message appears to be spam.")
+            else:
+                st.write("Non-spam message detected.")
+                transaction_type, amount = extract_transaction_details(message)
+                if transaction_type:
+                    st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
+                    if transaction_type == 'debit' and st.button(f"Add debit of INR {amount:.2f} to transaction history"):
+                        user_account.debit(amount)
+                        st.success("Transaction added.")
+                    elif transaction_type == 'credit':
+                        user_account.credit(amount)
+                        st.success("Transaction credited.")
+                    st.experimental_rerun()
 
-        if sms_input:
-            if st.button("Analyze"):
-                try:
-                    category, transaction = classify_message(sms_input)
-                    
-                    if category:
-                        st.write(f"Category: {category}")
-                    else:
-                        st.warning("Unable to determine category from the SMS.")
+# Profile Setup for First-Time Login
+def profile_setup():
+    st.title("Setup Your Profile")
+    first_name = st.text_input("First Name")
+    last_name = st.text_input("Last Name")
+    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+    age = st.number_input("Age", min_value=0)
+    profession = st.text_input("Profession")
+    if st.button("Save Profile"):
+        if first_name and last_name and age and profession:
+            st.session_state.update({"first_name": first_name, "last_name": last_name, "gender": gender, "age": age, "profession": profession, "is_profile_set": True})
+            profile_data = pd.DataFrame([{"username": st.session_state.username, "first_name": first_name, "last_name": last_name, "gender": gender, "age": age, "profession": profession}])
+            if not os.path.exists("data/profiles.csv"):
+                profile_data.to_csv("data/profiles.csv", index=False)
+            else:
+                profile_data.to_csv("data/profiles.csv", mode="a", header=False, index=False)
+            st.success("Profile saved!")
+            st.experimental_rerun()
+        else:
+            st.error("Please complete all fields.")
 
-                    if transaction:
-                        st.write(f"Transaction details: {transaction}")
-                    else:
-                        st.warning("No transaction details found in the SMS.")
-                except Exception as e:
-                    st.error(f"An error occurred during SMS classification: {str(e)}")
+# Main Function
+def login_signup():
+    st.title("Expense Manager Login")
+    tab_login, tab_signup = st.tabs(["Login", "Sign Up"])
+    with tab_login:
+        st.subheader("Login")
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
+        if st.button("Login"):
+            if authenticate(username, password):
+                st.session_state.update({"logged_in": True, "username": username})
+                st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values
+                st.experimental_rerun()
+            else:
+                st.error("Invalid username or password.")
 
-# Main entry point
+    with tab_signup:
+        st.subheader("Sign Up")
+        new_username = st.text_input("Username", key="signup_username")
+        new_password = st.text_input("Password", type="password", key="signup_password")
+        if st.button("Sign Up"):
+            if register_user(new_username, new_password):
+                st.success("Account created! Please log in.")
+            else:
+                st.error("Username already exists. Try a different one.")
+
+# Initialize the application
 if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+    st.session_state["logged_in"] = False
 
-if "show_signup" not in st.session_state:
-    st.session_state.show_signup = False
-
-if st.session_state.logged_in:
-    expense_dashboard()
-elif st.session_state.show_signup:
-    signup_page()
+if st.session_state["logged_in"]:
+    if not st.session_state.get("is_profile_set", False):
+        profile_setup()
+    else:
+        expense_dashboard()
 else:
-    login_page()
+    login_signup()
