@@ -98,19 +98,24 @@ def login_page():
         else:
             st.error("Invalid username or password")
 
-    # Forgot password link
-    st.markdown("[Forgotten account?](#)")
+    # Option to navigate to the signup process
+    if st.button("Don't have an account?"):
+        signup_page()
 
-    # Sign up section
-    st.markdown("**Don't have an account?**")
+# Signup page function
+def signup_page():
+    st.title("Sign Up for Expense Manager")
+    st.write("Create an account to start managing your expenses.")
+
     new_username = st.text_input("Username (new user)", placeholder="Create a new username", label_visibility="collapsed")
     new_password = st.text_input("Password (new user)", type="password", placeholder="Create a new password", label_visibility="collapsed")
     confirm_password = st.text_input("Confirm Password", type="password", placeholder="Re-enter your password", label_visibility="collapsed")
 
-    if st.button("Sign up for Expense Manager"):
+    if st.button("Sign up"):
         if new_password == confirm_password:
             if register_user(new_username, new_password):
                 st.success("Registration successful! You can now log in.")
+                st.button("Log in")  # Trigger login button after registration
             else:
                 st.error("Username already taken. Try another one.")
         else:
