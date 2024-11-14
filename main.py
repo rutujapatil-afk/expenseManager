@@ -200,8 +200,10 @@ def login_signup():
     # Login tab
     with tab_login:
         st.subheader("Login to your account")
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password")
+        # Ensure unique keys for username and password inputs
+        username = st.text_input("Username", key="login_username_input")  
+        password = st.text_input("Password", type="password", key="login_password_input")  # Add unique key for password field
+        
         if st.button("Login"):
             if authenticate(username, password):
                 st.session_state["username"] = username
@@ -214,13 +216,16 @@ def login_signup():
     # Signup tab
     with tab_signup:
         st.subheader("Create a new account")
-        username = st.text_input("Username", key="signup_username")
-        password = st.text_input("Password", type="password")
+        # Ensure unique keys for username and password inputs in sign up tab
+        username = st.text_input("Username", key="signup_username_input")  
+        password = st.text_input("Password", type="password", key="signup_password_input")  # Add unique key for password field
+        
         if st.button("Sign Up"):
             if register_user(username, password):
                 st.success("Account created successfully! You can now log in.")
             else:
                 st.error("Username already taken. Please choose a different one.")
+
 
 # Handle user login and setup
 if 'logged_in' in st.session_state and st.session_state.logged_in:
