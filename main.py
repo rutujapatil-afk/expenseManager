@@ -176,49 +176,43 @@ def profile_setup():
 
 # Main Function
 def login_signup():
+    st.title("Expense Manager Login")
+
     if "signup_visible" not in st.session_state:
         st.session_state.signup_visible = False
 
     if st.session_state.signup_visible:
-        username = st.text_input("Username", key="signup_username")
-        password = st.text_input("Password", type="password", key="signup_password")
-        confirm_password = st.text_input("Confirm Password", type="password", key="signup_confirm_password")
-
-        if password != confirm_password:
-            st.error("Passwords do not match!")
-
+        # Sign Up form is shown when user clicks "Sign up for Expense Manager"
+        st.subheader("Create an Account")
+        username_signup = st.text_input("Username", key="username_signup")
+        password_signup = st.text_input("Password", type="password", key="password_signup")
         if st.button("Sign Up"):
-            if register_user(username, password):
-                st.success("Account created! You can now log in.")
+            if register_user(username_signup, password_signup):
+                st.success("Account created! Please log in.")
                 st.session_state.signup_visible = False
             else:
-                st.error("Username already taken.")
+                st.error("Username already taken or invalid.")
     else:
+        # Default Login form
+        st.subheader("Login")
         username = st.text_input("Username", key="login_username")
         password = st.text_input("Password", type="password", key="login_password")
 
-        if st.button("Log In"):
+        if st.button("Login"):
             if authenticate(username, password):
                 st.session_state.username = username
-                st.session_state.logged_in = True
-                if not os.path.exists("data/profiles.csv"):
-                    st.session_state.is_profile_set = False
+                if "is_profile_set" not in st.session_state or not st.session_state.is_profile_set:
                     profile_setup()
                 else:
-                    st.session_state.is_profile_set = True
                     expense_dashboard()
             else:
                 st.error("Invalid username or password.")
-
-    if not st.session_state.signup_visible:
-        if st.button("Sign Up for Expense Manager"):
+        if st.button("Sign up for Expense Manager"):
             st.session_state.signup_visible = True
 
+# Running the main function
 if __name__ == "__main__":
-    if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
-
-    if st.session_state.logged_in:
+    if "username" in st.session_state:
         expense_dashboard()
     else:
         login_signup()
