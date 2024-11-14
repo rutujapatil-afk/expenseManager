@@ -31,7 +31,14 @@ def load_users():
 def save_user(username, password):
     hashed_password = hash_password(password)
     new_user = pd.DataFrame([[username, hashed_password]], columns=["username", "password"])
+
+    # Debugging: print the file path
+    print(f"Users file path: {os.path.abspath(users_file)}")  # This will print the full absolute path to the users.csv file
+
     new_user.to_csv(users_file, mode="a", header=False, index=False)
+
+    # Confirm save
+    print(f"User saved to {os.path.abspath(users_file)}")
 
 def authenticate(username, password):
     users = load_users()
