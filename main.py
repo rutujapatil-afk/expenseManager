@@ -183,28 +183,34 @@ def login_signup():
 
         # Login Tab
         with tab_login:
-            st.subheader("Login")
-            username = st.text_input("Username", key="login_username")
+            st.subheader("Log in to Expense Manager")
+            username = st.text_input("Email address or phone number", key="login_username")
             password = st.text_input("Password", type="password", key="login_password")
-            if st.button("Login"):
+            if st.button("Log in"):
                 if authenticate(username, password):
-                    st.session_state.update({"logged_in": True, "username": username})
-                    # Check if profile exists after successful login
-                    st.session_state["is_profile_set"] = username in pd.read_csv("data/profiles.csv")["username"].values
+                    st.session_state.username = username
+                    st.session_state.logged_in = True
+                    st.success("Logged in successfully!")
                     st.experimental_rerun()
                 else:
-                    st.error("Invalid username or password.")
+                    st.error("Invalid credentials. Please try again.")
 
-        # Sign Up Tab
-        with tab_signup:
-            st.subheader("Sign Up")
-            new_username = st.text_input("Username", key="signup_username")
-            new_password = st.text_input("Password", type="password", key="signup_password")
-            if st.button("Sign Up"):
-                if register_user(new_username, new_password):
-                    st.success("Account created! Please log in.")
-                else:
-                    st.error("Username already exists. Try a different one.")
+            # Forgotten account link
+            if st.button("Forgotten account?"):
+                st.write("Please contact support.")
+
+            # Sign up link
+            if st.button("Sign up for Expense Manager"):
+                with tab_signup:
+                    st.subheader("Sign Up")
+                    new_username = st.text_input("Username", key="signup_username")
+                    new_password = st.text_input("Password", type="password", key="signup_password")
+                    if st.button("Sign Up"):
+                        if register_user(new_username, new_password):
+                            st.success("Account created! Please log in.")
+                        else:
+                            st.error("Username already exists. Try a different one.")
+
     else:
         if not st.session_state.get("is_profile_set", False):
             profile_setup()
