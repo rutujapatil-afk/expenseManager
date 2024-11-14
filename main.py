@@ -143,24 +143,30 @@ def expense_dashboard():
         message = st.text_area("Paste your bank message here", key="sms_input")
         if st.button("Analyze"):
             label = classify_message(message)
+        
             if label == 'spam':
                 st.write("This message appears to be spam.")
             else:
                 st.write("Non-spam message detected.")
                 transaction_type, amount = extract_transaction_details(message)
+            
                 if transaction_type:
                     st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
-                    if transaction_type == 'debit' and st.button(f"Add debit of INR {amount:.2f} to transaction history"):
-                        user_account.debit(amount)
-                        st.success("Transaction added.")
+                
+                    # Add Debit or Credit Transaction
+                    if transaction_type == 'debit':
+                        if st.button(f"Add debit of INR {amount:.2f} to transaction history"):
+                            user_account.debit(amount)  # Updates balance and adds to transactions
+                            st.success("Debit transaction added successfully.")
+                
                     elif transaction_type == 'credit':
-                        user_account.credit(amount)
-                        st.success("Transaction credited.")
-                    try:
-                        st.experimental_rerun()
-                    except AttributeError:
-                        st.error("An error occurred while trying to rerun the app. Please try refreshing the page.")
-
+                        if st.button(f"Add credit of INR {amount:.2f} to transaction history"):
+                            user_account.credit(amount)  # Updates balance and adds to transactions
+                            st.success("Credit transaction added successfully.")
+                
+                    # Display updated transaction history after each transaction
+                    st.write("Updated Transaction History:")
+                    st.dataframe(user_account.transactions)
 
 # Profile Setup for First-Time Login
 def profile_setup():
