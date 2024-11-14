@@ -33,12 +33,13 @@ def save_user(username, password):
     new_user = pd.DataFrame([[username, hashed_password]], columns=["username", "password"])
 
     # Debugging: print the file path
-    print(f"Users file path: {os.path.abspath(users_file)}")  # This will print the full absolute path to the users.csv file
+    print(f"Saving user to: {os.path.abspath(users_file)}")  # This will print the absolute path of the users.csv file
 
     new_user.to_csv(users_file, mode="a", header=False, index=False)
-
-    # Confirm save
-    print(f"User saved to {os.path.abspath(users_file)}")
+    
+    # After saving, print out the contents of the users.csv file for verification
+    users = pd.read_csv(users_file)
+    print(f"Users in CSV after registration: \n{users}")
 
 def authenticate(username, password):
     users = load_users()
@@ -52,9 +53,17 @@ def authenticate(username, password):
 
 def register_user(username, password):
     users = load_users()
+    
+    # Check if username already exists
     if username in users["username"].values:
         return False
+    
+    # Save the new user credentials
     save_user(username, password)
+    
+    # Force a refresh of the page to load updated data from users.csv
+    st.experimental_rerun()
+    
     return True
 
 # Dashboard Functionality
