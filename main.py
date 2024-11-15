@@ -102,33 +102,6 @@ class UserAccount:
 # Initialize a user account instance
 user_account = UserAccount()
 
-# Bill Splitting Feature
-class BillSplitting:
-    def __init__(self):
-        self.groups = {}
-
-    def create_group(self, group_name, members):
-        self.groups[group_name] = {"members": members, "debts": {member: 0 for member in members}}
-
-    def split_bill(self, group_name, total_amount):
-        if group_name in self.groups:
-            num_members = len(self.groups[group_name]["members"])
-            split_amount = total_amount / num_members
-            self.groups[group_name]["debts"] = {member: split_amount for member in self.groups[group_name]["members"]}
-            st.success(f"Bill of INR {total_amount} split equally among the group.")
-        else:
-            st.error("Group not found.")
-
-    def show_debts(self, group_name):
-        if group_name in self.groups:
-            st.write("Current debts for group:", group_name)
-            for member, debt in self.groups[group_name]["debts"].items():
-                st.write(f"{member}: INR {debt:.2f}")
-        else:
-            st.error("Group not found.")
-
-bill_splitting = BillSplitting()
-
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
     st.header(f"Welcome, {st.session_state.username}!")
@@ -184,55 +157,94 @@ def expense_dashboard():
                     if transaction_type == 'debit':
                         user_account.debit(amount)
                         st.success("Transaction debited and balance updated!")
+                    elif transaction_type == 'credit':
+                        user_account.credit(amount)
+                        st.success("Transaction credited and balance updated!")
+                    st.experimental_rerun()
 
     # Bill Splitting Section
     with st.expander("Bill Splitting"):
         st.subheader("Create a Group")
-        group_name = st.text_input("Group Name")
-        group_members = st.text_area("Enter group members (comma separated)").split(",")
-        group_members = [member.strip() for member in group_members]
         
-        if st.button("Create Group"):
-            if group_name and len(group_members) > 1:
-                bill_splitting.create_group(group_name, group_members)
-                st.success(f"Group '{group_name}' created successfully with members: {', '.join(group_members)}.")
+        registered_users = load_users()["username"].values.tolist()
+        if "current_group_members" not in st.session_state:
+            st.session_state.current_group_members = []
+
+        group_name = st.text_input("Enter Group Name")
+        new_member = st.text_input("Enter Username of Group Member")
+        
+        if st.button("Add Member"):
+            if new_member in registered_users and new_member not in st.session_state.current_group_members:
+                st.session_state.current_group_members.append(new_member)
+                st.success(f"Added member: {new_member}")
+            elif new_member in st.session_state.current_group_members:
+                st.warning(f"'{new_member}' is already added.")
             else:
-                st.error("Please enter a valid group name and members.")
+                st.error("Username does not exist.")
         
-        st.subheader("Split a Bill")
-        group_to_split = st.selectbox("Select Group", list(bill_splitting.groups.keys()))
-        total_bill_amount = st.number_input("Total Bill Amount", min_value=0.0, step=0.01)
-        
-        if st.button("Split Bill"):
-            bill_splitting.split_bill(group_to_split, total_bill_amount)
-        
-        if st.button("Show Debts"):
-            bill_splitting.show_debts(group_to_split)
+            if len(st.session_state.current_group_members) == 6:
+                st.warning("Maximum group size reached.")
 
-# Main Application Flow
-def main():
-    if "username" in st.session_state:
-        if "is_profile_set" not in st.session_state:
-            setup_profile()
-        else:
-            expense_dashboard()
+        st.write("Current Group Members:", ", ".join(st.session_state.current_group_members))
+
+        if st.button("Create Group"):
+            if group_name and st.session_state.current_group_members:
+                st.session_state.groups[group_name] = {
+                    "members": st.session_state.current_group_members,
+                    "transactions": [],
+                }
+                st.success(f"Group '{group_name}' created!")
+                st.session_state.current_group_members = []
+            else:
+                st.error("Please provide a group name and at least one member.")
+
+# Main Flow Logic
+if "username" not in st.session_state:
+    st.session_state.username = ""
+if "is_profile_set" not in st.session_state:
+    st.session_state.is_profile_set = False
+if "input_submitted" not in st.session_state:
+    st.session_state.input_submitted = False
+
+if "username" in st.session_state and st.session_state.username:
+    if not st.session_state.is_profile_set:
+        setup_profile()
     else:
-        # Login page
-        st.subheader("Login")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
+        expense_dashboard()
+else:
+    st.header("Welcome to the Expense Manager!")
+    st.subheader("Log in to continue")
 
-        if st.button("Login"):
+    # Login Section
+    username = st.text_input("Enter your username", key="username_login")
+    password = st.text_input("Enter your password", type="password", key="password_login")
+    
+    login_col, new_user_col = st.columns(2)
+
+    with login_col:
+        if st.button("Login", key="login_button"):
             if authenticate(username, password):
-                st.session_state.username = username
-                st.session_state.is_logged_in = True
+                st.success(f"Logged in as {username}")
                 st.experimental_rerun()
             else:
-                st.error("Invalid credentials")
+                st.error("Incorrect username or password.")
 
-        if st.button("Sign Up"):
-            st.session_state.is_signup = True
+    with new_user_col:
+        if st.button("New User", key="new_user_button"):
+            st.session_state.is_signing_up = True  # Trigger the sign-up process
             st.experimental_rerun()
 
-if __name__ == "__main__":
-    main()
+    st.markdown("[Forgotten account?](#)")
+
+    # Signup Section
+    if st.session_state.get("is_signing_up", False):
+        st.subheader("Sign up for a new account")
+        new_username = st.text_input("Enter a username", key="username_signup")
+        new_password = st.text_input("Enter a password", type="password", key="password_signup")
+
+        if st.button("Sign Up", key="signup_button"):
+            if register_user(new_username, new_password):
+                st.success(f"Account created for {new_username}. Please log in.")
+                st.session_state.is_signing_up = False  # Return to login after successful signup
+            else:
+                st.error("Username already exists.")
