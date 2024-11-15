@@ -3,7 +3,7 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending
+from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
 
 # User Authentication Functions
@@ -166,7 +166,7 @@ def expense_dashboard():
                 recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
                 if recommended_policy is not None and suitable_policies is not None:
                     visualize_policy_comparison(suitable_policies)
-                #display_policy_suggestion(monthly_investment, investment_duration)
+                display_policy_suggestion(monthly_investment, investment_duration)
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
