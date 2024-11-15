@@ -107,16 +107,25 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
     predicted_category = spending_model.predict(user_spending)[0]
     st.write(f"Predicted Spending Category: {predicted_category}")
 
+    # Relax filtering logic - Allow a range of ROI based on category
     if predicted_category == 'Low':
-        suitable_policies = policy_data[policy_data['ROI Category'] == 'Low']
+        suitable_policies = policy_data[policy_data['ROI Category'].isin(['Low', 'Medium'])]
     elif predicted_category == 'Medium':
-        suitable_policies = policy_data[policy_data['ROI Category'] != 'Very High']
+        suitable_policies = policy_data[policy_data['ROI Category'].isin(['Medium', 'High'])]
     else:
         suitable_policies = policy_data[policy_data['ROI Category'] == 'High']
 
     if not suitable_policies.empty:
         suitable_policies = suitable_policies.copy()
+        
+        # Calculate potential returns
         suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
+
+        # Further filtering based on other factors
+        suitable_policies = suitable_policies[suitable_policies['Minimum Investment'] <= user_investment]
+        suitable_policies = suitable_policies[suitable_policies['Investment Horizon'] >= investment_duration]
+
+        # Select the top policy with highest potential return
         recommended_policy = suitable_policies.loc[suitable_policies['Potential Return ($)'].idxmax()]
 
         st.write("### Recommended Policy Based on Your Investment:")
