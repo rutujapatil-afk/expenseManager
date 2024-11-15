@@ -101,50 +101,21 @@ def get_user_input():
 
     return st.session_state.monthly_investment, st.session_state.investment_duration
 
-# Policy Recommendation function
+# Policy Recommendation
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
     user_spending = np.array([[user_investment]])
     predicted_category = spending_model.predict(user_spending)[0]
     st.write(f"Predicted Spending Category: {predicted_category}")
 
-    # Relax filtering logic - Allow a range of ROI based on category
     if predicted_category == 'Low':
-        suitable_policies = policy_data[policy_data['ROI Category'].isin(['Low', 'Medium'])]
+        suitable_policies = policy_data[policy_data['ROI Category'] == 'Low']
     elif predicted_category == 'Medium':
-        suitable_policies = policy_data[policy_data['ROI Category'].isin(['Medium', 'High'])]
+        suitable_policies = policy_data[policy_data['ROI Category'] != 'Very High']
     else:
         suitable_policies = policy_data[policy_data['ROI Category'] == 'High']
 
     if not suitable_policies.empty:
         suitable_policies = suitable_policies.copy()
-        
-        # Mapping 'Investment Horizon' to numeric values
-        def map_investment_horizon(horizon):
-            if '1-3 years' in horizon:
-                return 2
-            elif '3-7 years' in horizon:
-                return 5
-            elif '7+ years' in horizon:
-                return 7
-            return None  # In case there's an unexpected value
-        
-        suitable_policies['Investment Horizon'] = suitable_policies['Investment Horizon'].apply(map_investment_horizon)
-        
-        # Drop rows with NaN values in 'Investment Horizon' (if any)
-        suitable_policies = suitable_policies.dropna(subset=['Investment Horizon'])
-
-        # Further filtering based on other factors
-        suitable_policies = suitable_policies[suitable_policies['Minimum Investment'] <= user_investment]
-        
-        # Check for any rows with invalid or NaN 'Investment Horizon'
-        if suitable_policies.empty:
-            st.write("No suitable policies found with valid 'Investment Horizon'.")
-            return None, None
-        
-        # Filter based on 'Investment Horizon'
-        suitable_policies = suitable_policies[suitable_policies['Investment Horizon'] >= investment_duration]
-
-        # Select the top policy with highest potential return
         suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
         recommended_policy = suitable_policies.loc[suitable_policies['Potential Return ($)'].idxmax()]
 
@@ -187,20 +158,29 @@ def visualize_policy_comparison(suitable_policies):
 
         # Add value labels to each bar
         for index, value in enumerate(top_policies['Potential Return ($)']):
-            bar_plot.text(value, index, f"${value:,.2f}", color='black', ha="left", va="center")
-        
+            bar_plot.text(value, index, f'${value:,.2f}', color='black', va="center")
+
+        # Display the plot in Streamlit
         st.pyplot(plt)
+    else:
+        st.write("No suitable policies to visualize.")
 
-# Main execution flow
-def main():
-    # Collect user input
-    user_investment, investment_duration = get_user_input()
 
-    if user_investment is None or investment_duration is None:
-        return
+def display_policy_suggestion():
+    """
+    Display the policy suggestion based on the user input
+    """
+    st.title("Investment Policy Suggestion")
 
-    # Get recommendations
-    recommended_policy, suitable_policies = recommend_policy(user_investment, investment_duration, policy_data, model_spending)
-    
-    if recommended_policy is not None:
-        visualize_policy_comparison(suitable_policies)
+    # Get user input
+    monthly_investment, investment_duration = get_user_input()
+
+    # Wait until the input is submitted
+    if st.session_state.get("input_submitted", False):
+        if st.button('Analyze'):
+            recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+            
+            if recommended_policy is not None and suitable_policies is not None:
+                visualize_policy_comparison(suitable_policies)
+        else:
+            st.write("Please click 'Analyze' after filling out your investment details.")
