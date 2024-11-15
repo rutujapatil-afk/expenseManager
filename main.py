@@ -200,39 +200,64 @@ def expense_dashboard():
                 st.error("Please enter a valid group name and members.")
         
         st.subheader("Split a Bill")
-        group_to_split = st.selectbox("Select Group", list(bill_splitting.groups.keys()))
-        total_bill_amount = st.number_input("Total Bill Amount", min_value=0.0, step=0.01)
+        group_to_split = st.text_input("Group Name to Split Bill")
+        bill_amount = st.number_input("Total Bill Amount", min_value=0.0, step=0.01)
         
         if st.button("Split Bill"):
-            bill_splitting.split_bill(group_to_split, total_bill_amount)
-        
-        if st.button("Show Debts"):
-            bill_splitting.show_debts(group_to_split)
-
-# Main Application Flow
-def main():
-    if "username" in st.session_state:
-        if "is_profile_set" not in st.session_state:
-            setup_profile()
-        else:
-            expense_dashboard()
-    else:
-        # Login page
-        st.subheader("Login")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-
-        if st.button("Login"):
-            if authenticate(username, password):
-                st.session_state.username = username
-                st.session_state.is_logged_in = True
-                st.experimental_rerun()
+            if group_to_split in bill_splitting.groups:
+                bill_splitting.split_bill(group_to_split, bill_amount)
             else:
-                st.error("Invalid credentials")
+                st.error("Group not found.")
+            
+        st.subheader("Show Debts")
+        group_to_show_debts = st.text_input("Group Name to View Debts")
+        if st.button("Show Debts"):
+            bill_splitting.show_debts(group_to_show_debts)
 
-        if st.button("Sign Up"):
-            st.session_state.is_signup = True
-            st.experimental_rerun()
+# Main Application
+def app():
+    if "username" not in st.session_state:
+        st.session_state.username = ""
+    if "is_profile_set" not in st.session_state:
+        st.session_state.is_profile_set = False
+    
+    if st.session_state.username:
+        expense_dashboard()
+    else:
+        st.subheader("Login")
+        login_username = st.text_input("Username")
+        login_password = st.text_input("Password", type="password")
+        
+        if st.button("Login"):
+            if authenticate(login_username, login_password):
+                st.success(f"Welcome {login_username}!")
+                st.session_state.username = login_username
+                expense_dashboard()
+            else:
+                st.error("Invalid login credentials!")
+        
+        if st.button("New User"):
+            st.session_state.username = ""
+            st.session_state.is_profile_set = False
+            register_page()
+        
+# Register Page
+def register_page():
+    st.subheader("Create New Account")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    confirm_password = st.text_input("Confirm Password", type="password")
+    
+    if st.button("Register"):
+        if password == confirm_password:
+            if register_user(username, password):
+                st.success("Account created successfully! You can now log in.")
+                st.session_state.username = username
+            else:
+                st.error("Username already exists. Please try another one.")
+        else:
+            st.error("Passwords do not match.")
 
+# Run the application
 if __name__ == "__main__":
-    main()
+    app()
