@@ -106,6 +106,21 @@ def expense_dashboard():
     st.title("Expense Manager Dashboard")
     st.header(f"Welcome, {st.session_state.username}!")
 
+    # Profile Button
+    if st.button("Profile"):
+        st.subheader("Your Profile")
+        st.write(f"**Name**: {st.session_state.name}")
+        st.write(f"**Phone Number**: {st.session_state.phone_number}")
+        st.write(f"**Age**: {st.session_state.age}")
+        st.write(f"**Gender**: {st.session_state.gender}")
+        st.write(f"**Profession**: {st.session_state.profession}")
+        st.write(f"**Investment Goal**: {st.session_state.investment_goal}")
+
+        # Logout Button
+        if st.button("Logout"):
+            st.session_state.clear()
+            st.experimental_rerun()
+
     # Expense Management Section
     with st.expander("Expense Management"):
         st.subheader("Add an Expense")
@@ -192,8 +207,6 @@ def expense_dashboard():
                 }
                 st.success(f"Group '{group_name}' created!")
                 st.session_state.current_group_members = []
-            else:
-                st.error("Please provide a group name and at least one member.")
 
 # Main Flow Logic
 if "username" not in st.session_state:
