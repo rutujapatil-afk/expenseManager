@@ -101,7 +101,6 @@ def get_user_input():
 
     return st.session_state.monthly_investment, st.session_state.investment_duration
 
-# Policy Recommendation
 # Policy Recommendation function
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
     user_spending = np.array([[user_investment]])
@@ -119,8 +118,17 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
     if not suitable_policies.empty:
         suitable_policies = suitable_policies.copy()
         
-        # Clean and convert 'Investment Horizon' to numeric, handle invalid or missing data
-        suitable_policies['Investment Horizon'] = pd.to_numeric(suitable_policies['Investment Horizon'], errors='coerce')
+        # Mapping 'Investment Horizon' to numeric values
+        def map_investment_horizon(horizon):
+            if '1-3 years' in horizon:
+                return 2
+            elif '3-7 years' in horizon:
+                return 5
+            elif '7+ years' in horizon:
+                return 7
+            return None  # In case there's an unexpected value
+        
+        suitable_policies['Investment Horizon'] = suitable_policies['Investment Horizon'].apply(map_investment_horizon)
         
         # Drop rows with NaN values in 'Investment Horizon' (if any)
         suitable_policies = suitable_policies.dropna(subset=['Investment Horizon'])
