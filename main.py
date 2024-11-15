@@ -214,23 +214,31 @@ if "username" in st.session_state and st.session_state.username:
     else:
         expense_dashboard()
 else:
-    option = st.sidebar.selectbox("Choose an option", ["Login", "Sign Up"])
-    if option == "Login":
-        st.subheader("Login")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        if st.button("Login"):
+    st.header("Login or Sign Up")
+
+    # User selection interface
+    login_mode = st.radio("", ["Login", "Sign Up"], horizontal=True, label_visibility="collapsed")
+
+    if login_mode == "Login":
+        st.subheader("Log in")
+        username = st.text_input("Enter your username", key="username_login")
+        password = st.text_input("Enter your password", type="password", key="password_login")
+
+        if st.button("Login", key="login_button"):
             if authenticate(username, password):
-                st.success("Logged in successfully!")
+                st.success(f"Logged in as {username}")
                 st.experimental_rerun()
             else:
-                st.error("Invalid credentials.")
-    elif option == "Sign Up":
-        st.subheader("Sign Up")
-        username = st.text_input("Choose a Username")
-        password = st.text_input("Choose a Password", type="password")
-        if st.button("Sign Up"):
+                st.error("Incorrect username or password.")
+        st.markdown("[Forgotten account?](#)")
+
+    elif login_mode == "Sign Up":
+        st.subheader("Sign up")
+        username = st.text_input("Enter your username", key="username_signup")
+        password = st.text_input("Enter your password", type="password", key="password_signup")
+
+        if st.button("Sign Up", key="signup_button"):
             if register_user(username, password):
-                st.success("Account created successfully! You can now log in.")
+                st.success(f"Account created for {username}.")
             else:
-                st.error("Username already taken.")
+                st.error("Username already exists.")
