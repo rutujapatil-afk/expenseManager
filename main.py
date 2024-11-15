@@ -166,7 +166,7 @@ def expense_dashboard():
                 recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
                 if recommended_policy is not None and suitable_policies is not None:
                     visualize_policy_comparison(suitable_policies)
-                display_policy_suggestion(monthly_investment, investment_duration)
+                #display_policy_suggestion(monthly_investment, investment_duration)
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
