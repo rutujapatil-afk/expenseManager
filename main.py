@@ -211,7 +211,7 @@ def login_page():
         else:
             st.error("Invalid username or password.")
 
-    if st.button("Sign Up"):
+    if st.button("New User"):
         st.session_state.is_signup = True
         signup_page()
 
