@@ -143,84 +143,96 @@ def expense_dashboard():
                         st.success("Transaction credited and balance updated!")
                     st.experimental_rerun()
 
-# Profile Setup for First-Time Login
-def profile_setup():
-    st.title("Setup Your Profile")
-    first_name = st.text_input("First Name")
-    last_name = st.text_input("Last Name")
-    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-    age = st.number_input("Age", min_value=0)
-    profession = st.text_input("Profession")
-    if st.button("Save Profile"):
-        if first_name and last_name and age and profession:
-            st.session_state.update({"first_name": first_name, "last_name": last_name, "gender": gender, "age": age, "profession": profession, "is_profile_set": True})
-            profile_data = pd.DataFrame([{"username": st.session_state.username, "first_name": first_name, "last_name": last_name, "gender": gender, "age": age, "profession": profession}])
-            if not os.path.exists("data/profiles.csv"):
-                profile_data.to_csv("data/profiles.csv", index=False)
+    # Bill Splitting Section
+    with st.expander("Bill Splitting"):
+        st.subheader("Create a Group")
+        
+        if "groups" not in st.session_state:
+            st.session_state.groups = {}
+        if "debts" not in st.session_state:
+            st.session_state.debts = {}
+
+        group_name = st.text_input("Enter Group Name")
+        members = st.text_area("Enter group members (comma-separated)")
+        members_list = [member.strip() for member in members.split(",") if member.strip()]
+        
+        if st.button("Create Group"):
+            if group_name and members_list:
+                st.success(f"Group '{group_name}' created with members: {', '.join(members_list)}")
+                st.session_state.groups[group_name] = {"members": members_list, "transactions": []}
             else:
-                profile_data.to_csv("data/profiles.csv", mode="a", header=False, index=False)
-            st.success("Profile saved!")
-            st.experimental_rerun()
-        else:
-            st.error("Please complete all fields.")
-
-# Main Function
-def login_signup():
-    if not st.session_state.get("logged_in", False):  # Only show login/signup tabs when user is not logged in
-        st.title("Expense Manager Login")
+                st.error("Please provide a valid group name and at least one member.")
         
-        # Show only the login form initially
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_password")
+        if group_name in st.session_state.groups:
+            st.subheader("Split a Bill")
+            total_amount = st.number_input("Total Amount", min_value=0.0, step=0.01)
+            transaction_type = st.selectbox("Transaction Type", ["Cash", "Online"])
+            category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
+            description = st.text_input("Description") if category == "Others" else ""
+            split_date = date.today()
+            
+            if st.button("Split"):
+                if total_amount > 0 and members_list:
+                    split_amount = total_amount / len(members_list)
+                    st.write(f"Each member owes INR {split_amount:.2f}.")
+                    
+                    # Update debts
+                    for member in members_list:
+                        if member != st.session_state.username:  # Skip the user splitting the bill
+                            st.session_state.debts[member] = st.session_state.debts.get(member, 0) + split_amount
+                    
+                    st.session_state.groups[group_name]["transactions"].append({
+                        "amount": total_amount,
+                        "type": transaction_type,
+                        "category": category,
+                        "description": description,
+                        "date": str(split_date),
+                        "split_amount": split_amount
+                    })
+                    st.success("Bill split successfully!")
+                else:
+                    st.error("Please enter a valid amount and group.")
         
-        if st.button("Log in", key="login_button"):
-            if authenticate(username, password):
-                st.session_state.username = username
-                st.session_state.logged_in = True
-                st.session_state.is_profile_set = check_profile_set(username)
-                st.success("Logged in successfully!")
-                st.experimental_rerun()
-            else:
-                st.error("Invalid username or password.")
-        
-        if st.button("Sign up for Expense Manager", key="signup_button"):
-            st.session_state.signup_mode = True
-            st.experimental_rerun()
+        # Display debts
+        if st.session_state.debts:
+            st.subheader("Debts Summary")
+            for member, debt in st.session_state.debts.items():
+                if debt > 0:
+                    st.write(f"You owe {member}: INR {debt:.2f}")
+                elif debt < 0:
+                    st.write(f"{member} owes you: INR {-debt:.2f}")
 
-    elif st.session_state.get("signup_mode", False):  # Signup Mode
-        st.title("Sign Up for Expense Manager")
+# Login/Signup Section
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
+if not st.session_state.authenticated:
+    st.title("Welcome to Expense Manager")
+    st.write("Your personalized platform for managing finances and investments.")
+    option = st.selectbox("Select an option", ["Login", "Signup"])
+
+    if option == "Login":
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
-        
-        if st.button("Sign up", key="register_button"):
-            if register_user(username, password):
+        if st.button("Login"):
+            if authenticate(username, password):
+                st.success("Logged in successfully!")
+                st.session_state.authenticated = True
                 st.session_state.username = username
-                st.session_state.logged_in = True
-                st.session_state.is_profile_set = False
-                st.success("Signed up and logged in successfully!")
-                st.experimental_rerun()
             else:
-                st.error("Username already exists.")
-        if st.button("Back to Login", key="back_to_login"):
-            st.session_state.signup_mode = False
-            st.experimental_rerun()
-
-    else:  # Profile setup or dashboard
-        if not st.session_state.get("is_profile_set", False):  # If profile not set, show profile setup
-            profile_setup()
-        else:
-            expense_dashboard()
-
-def check_profile_set(username):
-    profiles_file = "data/profiles.csv"
-    if not os.path.exists(profiles_file):
-        return False
-    profiles = pd.read_csv(profiles_file)
-    return username in profiles["username"].values
-
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-    st.session_state["signup_mode"] = False
-
-login_signup()
+                st.error("Invalid username or password. Please try again.")
+    elif option == "Signup":
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        confirm_password = st.text_input("Confirm Password", type="password")
+        if st.button("Signup"):
+            if password == confirm_password:
+                if register_user(username, password):
+                    st.success("Account created successfully! You can now log in.")
+                else:
+                    st.error("Username already exists. Please choose a different one.")
+            else:
+                st.error("Passwords do not match. Please try again.")
+else:
+    # Show Dashboard
+    expense_dashboard()
