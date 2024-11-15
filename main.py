@@ -129,17 +129,21 @@ def expense_dashboard():
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
         st.dataframe(expenses)
 
-    # Investment Policy Suggestions Section
+    # Profile Section
     if st.session_state.get("is_profile_set", False):
-        with st.expander("Investment Policy Suggestions (ML Models)"):
-            st.subheader("Investment Suggestions")
-            monthly_investment, investment_duration = get_user_input()
-            if st.button("Analyze Investment", key="analyze_investment"):
-                st.session_state.input_submitted = True
-                recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-                if recommended_policy is not None and suitable_policies is not None:
-                    visualize_policy_comparison(suitable_policies)
-                display_policy_suggestion(monthly_investment, investment_duration)
+        with st.expander("Profile"):
+            st.subheader("Your Profile")
+            st.write(f"Name: {st.session_state.name}")
+            st.write(f"Phone Number: {st.session_state.phone_number}")
+            st.write(f"Age: {st.session_state.age}")
+            st.write(f"Gender: {st.session_state.gender}")
+            st.write(f"Profession: {st.session_state.profession}")
+            st.write(f"Investment Goal: {st.session_state.investment_goal}")
+            
+            if st.button("Logout"):
+                st.session_state.clear()  # Clear session state
+                st.success("You have been logged out.")
+                st.experimental_rerun()
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
@@ -203,48 +207,38 @@ if "username" not in st.session_state:
     st.session_state.username = ""
 if "is_profile_set" not in st.session_state:
     st.session_state.is_profile_set = False
-if "input_submitted" not in st.session_state:
-    st.session_state.input_submitted = False
 
-if "username" in st.session_state and st.session_state.username:
-    if not st.session_state.is_profile_set:
-        setup_profile()
-    else:
-        expense_dashboard()
+if st.session_state.username:
+    # Display dashboard if user is logged in
+    expense_dashboard()
 else:
-    st.header("Welcome to the Expense Manager!")
-    st.subheader("Log in to continue")
+    # Show login/signup page if user is not logged in
+    st.title("Welcome to the Expense Manager!")
+    action = st.radio("Select an Action", ["Login", "Sign Up"])
 
-    # Login Section
-    username = st.text_input("Enter your username", key="username_login")
-    password = st.text_input("Enter your password", type="password", key="password_login")
-    
-    login_col, new_user_col = st.columns(2)
+    if action == "Sign Up":
+        username = st.text_input("Enter username")
+        password = st.text_input("Enter password", type="password")
+        confirm_password = st.text_input("Confirm password", type="password")
 
-    with login_col:
-        if st.button("Login", key="login_button"):
+        if password == confirm_password:
+            if st.button("Sign Up"):
+                if register_user(username, password):
+                    st.session_state.username = username
+                    st.session_state.is_profile_set = False
+                    st.success("Registration successful! Please log in.")
+                else:
+                    st.error("Username already exists.")
+        else:
+            st.error("Passwords do not match.")
+
+    elif action == "Login":
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.button("Login"):
             if authenticate(username, password):
-                st.success(f"Logged in as {username}")
-                st.experimental_rerun()
+                st.session_state.username = username
+                st.session_state.is_profile_set = False
+                st.success("Login successful! Proceed to setup your profile.")
             else:
-                st.error("Incorrect username or password.")
-
-    with new_user_col:
-        if st.button("New User", key="new_user_button"):
-            st.session_state.is_signing_up = True  # Trigger the sign-up process
-            st.experimental_rerun()
-
-    st.markdown("[Forgotten account?](#)")
-
-    # Signup Section
-    if st.session_state.get("is_signing_up", False):
-        st.subheader("Sign up for a new account")
-        new_username = st.text_input("Enter a username", key="username_signup")
-        new_password = st.text_input("Enter a password", type="password", key="password_signup")
-
-        if st.button("Sign Up", key="signup_button"):
-            if register_user(new_username, new_password):
-                st.success(f"Account created for {new_username}. Please log in.")
-                st.session_state.is_signing_up = False  # Return to login after successful signup
-            else:
-                st.error("Username already exists.")
+                st.error("Invalid credentials.")
