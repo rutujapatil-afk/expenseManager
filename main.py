@@ -52,12 +52,25 @@ def register_user(username, password):
 # Profile Setup Function
 def setup_profile():
     st.subheader("Complete Profile Setup")
+    
+    # User input fields
     name = st.text_input("Enter your name")
+    phone_number = st.text_input("Enter your phone number")
     age = st.number_input("Enter your age", min_value=18, max_value=100, step=1)
+    gender = st.selectbox("Select your gender", ["Male", "Female", "Prefer not to say"])
+    profession = st.text_input("Enter your profession")
     investment_goal = st.selectbox("Select your primary investment goal", ["Wealth Growth", "Retirement", "Education", "Emergency Fund"])
 
     if st.button("Save Profile"):
+        # Store the profile data in session state or perform other actions as needed
         st.session_state.is_profile_set = True
+        st.session_state.name = name
+        st.session_state.phone_number = phone_number
+        st.session_state.age = age
+        st.session_state.gender = gender
+        st.session_state.profession = profession
+        st.session_state.investment_goal = investment_goal
+        
         st.success("Profile setup complete! Accessing your dashboard.")
         st.experimental_rerun()
 
@@ -180,57 +193,34 @@ def expense_dashboard():
             if st.button("Split"):
                 if total_amount > 0 and members_list:
                     split_amount = total_amount / len(members_list)
-                    st.write(f"Each member owes INR {split_amount:.2f}.")
-                    
+                    st.write(f"Each member owes INR {split_amount:.2f}")
                     for member in members_list:
-                        if member != st.session_state.username:
-                            st.session_state.debts[(st.session_state.username, member)] = st.session_state.debts.get((st.session_state.username, member), 0) + split_amount
-                            st.write(f"{member} owes INR {split_amount:.2f} to {st.session_state.username}")
+                        st.write(f"{member} owes INR {split_amount:.2f}")
+                    st.session_state.debts[group_name] = st.session_state.debts.get(group_name, {})
+                    for member in members_list:
+                        st.session_state.debts[group_name][member] = split_amount
                 else:
-                    st.error("Enter a valid amount and group.")
+                    st.error("Please enter a valid amount and ensure there are members in the group.")
 
-# Main Application
+# Main App Function
 def main():
+    st.set_page_config(page_title="Expense Manager", page_icon="💸")
+
     if "username" not in st.session_state:
+        st.session_state.username = ""
+
+    if "is_profile_set" not in st.session_state:
+        st.session_state.is_profile_set = False
+
+    # Login/Signup page
+    if st.session_state.username == "":
         login_page()
-    elif not st.session_state.get("is_profile_set", False):
-        setup_profile()
-    else:
+
+    elif st.session_state.is_profile_set:
         expense_dashboard()
 
-def login_page():
-    st.title("Expense Manager Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    
-    if st.button("Login"):
-        if authenticate(username, password):
-            st.session_state.username = username
-            st.success("Login successful!")
-            st.experimental_rerun()
-        else:
-            st.error("Invalid username or password.")
-
-    if st.button("New User"):
-        st.session_state.is_signup = True
-        signup_page()
-
-def signup_page():
-    st.title("Create a New Account")
-    username = st.text_input("Choose Username")
-    password = st.text_input("Choose Password", type="password")
-    confirm_password = st.text_input("Confirm Password", type="password")
-    
-    if password != confirm_password:
-        st.error("Passwords do not match.")
-    elif st.button("Register"):
-        if register_user(username, password):
-            st.session_state.username = username
-            st.session_state.is_signup = False
-            st.success("Account created successfully!")
-            st.experimental_rerun()
-        else:
-            st.error("Username already exists.")
+    else:
+        setup_profile()
 
 if __name__ == "__main__":
     main()
