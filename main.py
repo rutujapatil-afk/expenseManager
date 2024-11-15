@@ -192,50 +192,34 @@ def expense_dashboard():
                     for member in members_list:
                         if member != st.session_state.username:
                             st.session_state.debts[(st.session_state.username, member)] = st.session_state.debts.get((st.session_state.username, member), 0) + split_amount
-                    
-                    st.session_state.groups[group_name]["transactions"].append({
-                        "date": str(split_date),
-                        "amount": total_amount,
-                        "split_amount": split_amount,
-                        "category": category,
-                        "description": description
-                    })
-                    st.success("Bill split successfully!")
-
-# Main Application Logic
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
-    st.title("Welcome to Expense Manager")
-    st.write("Your personalized platform for managing finances and investments.")
-    option = st.selectbox("Select an option", ["Login", "Signup"])
-
-    if option == "Login":
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        if st.button("Login"):
-            if authenticate(username, password):
-                st.success("Logged in successfully!")
-                st.session_state.authenticated = True
-                if not st.session_state.is_profile_set:
-                    setup_profile()
-            else:
-                st.error("Invalid username or password. Please try again.")
-    elif option == "Signup":
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        confirm_password = st.text_input("Confirm Password", type="password")
-        if st.button("Signup"):
-            if password == confirm_password:
-                if register_user(username, password):
-                    st.success("Account created successfully! You can now log in.")
+                            st.write(f"{member} owes INR {split_amount:.2f} to {st.session_state.username}")
                 else:
-                    st.error("Username already exists. Please choose a different one.")
-            else:
-                st.error("Passwords do not match. Please try again.")
-else:
-    if st.session_state.is_profile_set:
-        expense_dashboard()
-    else:
+                    st.error("Enter a valid amount and group.")
+
+# Main Application
+def main():
+    if "username" not in st.session_state:
+        login_page()
+    elif not st.session_state.get("is_profile_set", False):
         setup_profile()
+    else:
+        expense_dashboard()
+
+def login_page():
+    st.title("Expense Manager")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if authenticate(username, password):
+            st.success("Login successful")
+            st.experimental_rerun()
+        else:
+            st.error("Invalid credentials")
+
+    st.subheader("Sign up for Expense Manager")
+    if st.button("Sign up"):
+        st.experimental_rerun()
+
+# Run main function
+if __name__ == "__main__":
+    main()
