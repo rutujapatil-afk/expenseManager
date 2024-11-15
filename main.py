@@ -194,33 +194,46 @@ def expense_dashboard():
                 if total_amount > 0 and members_list:
                     split_amount = total_amount / len(members_list)
                     st.write(f"Each member owes INR {split_amount:.2f}")
-                    for member in members_list:
-                        st.write(f"{member} owes INR {split_amount:.2f}")
-                    st.session_state.debts[group_name] = st.session_state.debts.get(group_name, {})
-                    for member in members_list:
-                        st.session_state.debts[group_name][member] = split_amount
+                    st.session_state.groups[group_name]["transactions"].append({
+                        "total_amount": total_amount,
+                        "transaction_type": transaction_type,
+                        "category": category,
+                        "description": description,
+                        "date": split_date,
+                        "split_amount": split_amount,
+                        "members": members_list
+                    })
+                    st.success(f"Bill of INR {total_amount} split among {len(members_list)} members.")
                 else:
-                    st.error("Please enter a valid amount and ensure there are members in the group.")
+                    st.error("Enter a valid total amount and member list.")
 
-# Main App Function
-def main():
-    st.set_page_config(page_title="Expense Manager", page_icon="💸")
-
-    if "username" not in st.session_state:
-        st.session_state.username = ""
-
-    if "is_profile_set" not in st.session_state:
-        st.session_state.is_profile_set = False
-
-    # Login/Signup page
-    if st.session_state.username == "":
-        login_page()
-
-    elif st.session_state.is_profile_set:
+# Main App Flow
+if "username" not in st.session_state:
+    login_or_signup = st.selectbox("Select Action", ["Login", "Sign Up"])
+    
+    if login_or_signup == "Login":
+        st.subheader("Login to Your Account")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.button("Login"):
+            if authenticate(username, password):
+                st.success("Login successful!")
+                st.session_state.username = username
+                expense_dashboard()
+            else:
+                st.error("Invalid username or password.")
+    
+    elif login_or_signup == "Sign Up":
+        st.subheader("Create a New Account")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.button("Sign Up"):
+            if register_user(username, password):
+                st.success("Account created successfully. Please log in.")
+            else:
+                st.error("Username already exists.")
+else:
+    if st.session_state.get("is_profile_set", False):
         expense_dashboard()
-
     else:
         setup_profile()
-
-if __name__ == "__main__":
-    main()
