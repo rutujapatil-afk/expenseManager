@@ -54,7 +54,7 @@ def register_user(username, password):
 class UserAccount:
     def __init__(self, initial_balance=10000.0):
         self.balance = initial_balance
-        self.transactions = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
+        self.transactions = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["type", "amount", "category", "date", "description"])
 
     def credit(self, amount, description="Credit"):
         self.balance += amount
@@ -133,14 +133,14 @@ def expense_dashboard():
             else:
                 st.write("Non-spam message detected.")
                 transaction_type, amount = extract_transaction_details(message)
-                if transaction_type:
+                if transaction_type and amount > 0:
                     st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
-                    if transaction_type == 'debit' and st.button(f"Add debit of INR {amount:.2f} to transaction history", key="debit_transaction_button"):
+                    if transaction_type == 'debit':
                         user_account.debit(amount)
-                        st.success("Transaction added.")
+                        st.success("Transaction debited and balance updated!")
                     elif transaction_type == 'credit':
                         user_account.credit(amount)
-                        st.success("Transaction credited.")
+                        st.success("Transaction credited and balance updated!")
                     st.experimental_rerun()
 
 # Profile Setup for First-Time Login
@@ -197,26 +197,30 @@ def login_signup():
             if register_user(username, password):
                 st.session_state.username = username
                 st.session_state.logged_in = True
-                st.success("Account created successfully!")
+                st.session_state.is_profile_set = False
+                st.success("Signed up and logged in successfully!")
                 st.experimental_rerun()
             else:
-                st.error("Username already exists. Please choose a different one.")
+                st.error("Username already exists.")
+        if st.button("Back to Login", key="back_to_login"):
+            st.session_state.signup_mode = False
+            st.experimental_rerun()
+
+    else:  # Profile setup or dashboard
+        if not st.session_state.get("is_profile_set", False):  # If profile not set, show profile setup
+            profile_setup()
+        else:
+            expense_dashboard()
 
 def check_profile_set(username):
-    if not os.path.exists("data/profiles.csv"):
+    profiles_file = "data/profiles.csv"
+    if not os.path.exists(profiles_file):
         return False
-    profiles = pd.read_csv("data/profiles.csv")
+    profiles = pd.read_csv(profiles_file)
     return username in profiles["username"].values
 
-# Main App Logic
-def main():
-    if not st.session_state.get("logged_in", False):
-        login_signup()
-    else:
-        if st.session_state.get("is_profile_set", False):
-            expense_dashboard()
-        else:
-            profile_setup()
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+    st.session_state["signup_mode"] = False
 
-if __name__ == "__main__":
-    main()
+login_signup()
