@@ -129,6 +129,14 @@ class BillSplitting:
 
 bill_splitting = BillSplitting()
 
+def display_policy_suggestion(monthly_investment, investment_duration):
+    st.write(f"Suggested monthly investment: INR {monthly_investment:.2f}")
+    st.write(f"Investment duration: {investment_duration} years")
+    st.write("Based on your inputs, here are your suggested policies:")
+    # Example: Additional logic for displaying recommended policy
+    st.write("Investment Policy 1: Conservative Growth")
+    st.write("Investment Policy 2: Aggressive Growth")
+
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
     st.header(f"Welcome, {st.session_state.username}!")
@@ -189,50 +197,37 @@ def expense_dashboard():
     with st.expander("Bill Splitting"):
         st.subheader("Create a Group")
         group_name = st.text_input("Group Name")
-        group_members = st.text_area("Enter group members (comma separated)").split(",")
-        group_members = [member.strip() for member in group_members]
-        
+        group_members = st.text_area("Enter members' names separated by commas").split(",")
         if st.button("Create Group"):
-            if group_name and len(group_members) > 1:
-                bill_splitting.create_group(group_name, group_members)
-                st.success(f"Group '{group_name}' created successfully with members: {', '.join(group_members)}.")
-            else:
-                st.error("Please enter a valid group name and members.")
-        
-        st.subheader("Split a Bill")
-        group_to_split = st.selectbox("Select Group", list(bill_splitting.groups.keys()))
-        total_bill_amount = st.number_input("Total Bill Amount", min_value=0.0, step=0.01)
-        
+            bill_splitting.create_group(group_name, group_members)
+            st.success(f"Group {group_name} created with members: {', '.join(group_members)}")
+
+        st.subheader("Split Bill")
+        group_to_split = st.selectbox("Select a Group to Split the Bill", list(bill_splitting.groups.keys()))
+        total_amount = st.number_input("Total Bill Amount", min_value=0.0, step=0.01)
         if st.button("Split Bill"):
-            bill_splitting.split_bill(group_to_split, total_bill_amount)
-        
-        if st.button("Show Debts"):
-            bill_splitting.show_debts(group_to_split)
+            bill_splitting.split_bill(group_to_split, total_amount)
 
-# Main Application Flow
-def main():
-    if "username" in st.session_state:
-        if "is_profile_set" not in st.session_state:
-            setup_profile()
-        else:
-            expense_dashboard()
-    else:
-        # Login page
-        st.subheader("Login")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
+        bill_splitting.show_debts(group_to_split)
 
-        if st.button("Login"):
-            if authenticate(username, password):
-                st.session_state.username = username
-                st.session_state.is_logged_in = True
-                st.experimental_rerun()
-            else:
-                st.error("Invalid credentials")
+# Main App Logic
+if "username" not in st.session_state:
+    st.session_state.username = ""
+    st.session_state.is_profile_set = False
 
-        if st.button("Sign Up"):
-            st.session_state.is_signup = True
+if st.session_state.username == "":
+    st.sidebar.subheader("Login")
+    username = st.sidebar.text_input("Username")
+    password = st.sidebar.text_input("Password", type="password")
+    
+    if st.sidebar.button("Login"):
+        if authenticate(username, password):
+            st.session_state.username = username
             st.experimental_rerun()
-
-if __name__ == "__main__":
-    main()
+        else:
+            st.sidebar.error("Invalid username or password.")
+else:
+    if not st.session_state.is_profile_set:
+        setup_profile()
+    else:
+        expense_dashboard()
