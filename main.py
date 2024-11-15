@@ -1,186 +1,238 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import LabelEncoder
+import hashlib
+import os
+from datetime import date
+from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
+from models.spam_classifier import classify_message, extract_transaction_details
 
-# Load Datasets
-@st.cache_data
-def load_data():
-    """
-    Load the policy and spending data from CSV files.
-    """
-    policy_data = pd.read_csv("data/insurance_policies_dataset.csv")
-    spending_data = pd.read_csv("data/transactions.csv")
-    return policy_data, spending_data
+# User Authentication Functions
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
-policy_data, spending_data = load_data()
+# Path to the users CSV file
+users_file = "data/users.csv"
 
-# Data Preprocessing
-def preprocess_data(spending_data, policy_data):
-    spending_data.columns = spending_data.columns.str.strip()
-    spending_data['Date'] = pd.to_datetime(spending_data['Date'])
-    monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
-    monthly_spending.rename(columns={'Amount': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
-    monthly_spending['Month'] = monthly_spending['Month'].dt.to_timestamp().dt.year * 100 + monthly_spending['Month'].dt.month
+# Create the users CSV file if it doesn't exist
+if not os.path.exists(users_file):
+    pd.DataFrame(columns=["username", "password"]).to_csv(users_file, index=False)
 
-    # Categorize monthly spending
-    monthly_spending['Spending Category'] = pd.cut(monthly_spending['Monthly Expense ($)'],
-                                                    bins=[0, 500, 1500, np.inf],
-                                                    labels=['Low', 'Medium', 'High'])
+def load_users():
+    try:
+        users = pd.read_csv(users_file)
+        if "username" not in users.columns or "password" not in users.columns:
+            st.error("CSV file must contain 'username' and 'password' columns.")
+            return pd.DataFrame(columns=["username", "password"])
+        return users
+    except Exception as e:
+        st.error(f"Error loading users: {e}")
+        return pd.DataFrame(columns=["username", "password"])
 
-    # Encoding policy types
-    le = LabelEncoder()
-    policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
+def save_user(username, password):
+    hashed_password = hash_password(password)
+    new_user = pd.DataFrame([[username, hashed_password]], columns=["username", "password"])
+    new_user.to_csv(users_file, mode="a", header=False, index=False)
 
-    # Check if 'Expected ROI' column exists and use it for categorization
-    if 'Expected ROI' in policy_data.columns:
-        policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'],bins=[0, 5, 10, 15, np.inf],labels=['Low', 'Medium', 'High', 'Very High'])
-    else:
-        st.error("Column 'Expected ROI' is missing from policy data.")
-        return None, None
+def authenticate(username, password):
+    users = load_users()
+    hashed_password = hash_password(password)
+    user = users[(users["username"] == username) & (users["password"] == hashed_password)]
+    if not user.empty:
+        st.session_state.username = username
+        return True
+    return False
 
-    # Check for required columns and adjust if needed
-    required_columns = ['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']
-    missing_columns = [col for col in required_columns if col not in policy_data.columns]
-    if missing_columns:
-        st.error(f"Missing columns: {', '.join(missing_columns)}")
-        return None, None
+def register_user(username, password):
+    users = load_users()
+    if username in users["username"].values:
+        return False
+    save_user(username, password)
+    return True
 
-    return monthly_spending, policy_data
+# Profile Setup Function
+def setup_profile():
+    st.subheader("Complete Profile Setup")
+    
+    # User input fields
+    name = st.text_input("Enter your name")
+    phone_number = st.text_input("Enter your phone number")
+    age = st.number_input("Enter your age", min_value=18, max_value=100, step=1)
+    gender = st.selectbox("Select your gender", ["Male", "Female", "Prefer not to say"])
+    profession = st.text_input("Enter your profession")
+    investment_goal = st.selectbox("Select your primary investment goal", ["Wealth Growth", "Retirement", "Education", "Emergency Fund"])
 
-monthly_spending, policy_data = preprocess_data(spending_data, policy_data)
-
-# Train the models
-def train_models(monthly_spending, policy_data):
-    X_spending = monthly_spending[['Month']]
-    y_spending = monthly_spending['Spending Category']
-    X_train_s, X_test_s, y_train_s, y_test_s = train_test_split(X_spending, y_spending, test_size=0.2, random_state=42)
-    model_spending = RandomForestClassifier(random_state=42)
-    model_spending.fit(X_train_s, y_train_s)
-    acc_spending = accuracy_score(y_test_s, model_spending.predict(X_test_s))
-
-    X_policy = policy_data[['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']]
-    X_policy = pd.get_dummies(X_policy, drop_first=True)
-    y_policy = policy_data['ROI Category']
-    X_train_p, X_test_p, y_train_p, y_test_p = train_test_split(X_policy, y_policy, test_size=0.2, random_state=42)
-    model_policy = RandomForestClassifier(random_state=42)
-    model_policy.fit(X_train_p, y_train_p)
-    acc_policy = accuracy_score(y_test_p, model_policy.predict(X_test_p))
-
-    return model_spending, model_policy, acc_spending, acc_policy
-
-model_spending, model_policy, acc_spending, acc_policy = train_models(monthly_spending, policy_data)
-
-# User Input for investment
-def get_user_input():
-    """
-    Get the user input for monthly investment and investment duration.
-    """
-    st.header("Enter Your Investment Details")
-
-    # Creating a form to input investment amount and duration
-    with st.form(key='investment_form'):
-        monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
-        investment_duration = st.number_input("Enter your investment duration (in months):", min_value=1, max_value=600, value=12)
-
-        submit_button = st.form_submit_button(label='Submit Investment')
+    if st.button("Save Profile"):
+        st.session_state.is_profile_set = True
+        st.session_state.name = name
+        st.session_state.phone_number = phone_number
+        st.session_state.age = age
+        st.session_state.gender = gender
+        st.session_state.profession = profession
+        st.session_state.investment_goal = investment_goal
         
-        if submit_button:
-            st.session_state.monthly_investment = monthly_investment
-            st.session_state.investment_duration = investment_duration
-            st.session_state.input_submitted = True
-            st.success("Investment details submitted successfully!")
+        st.success("Profile setup complete! Accessing your dashboard.")
+        st.experimental_rerun()
 
-    if 'monthly_investment' not in st.session_state or 'investment_duration' not in st.session_state:
-        return None, None
+# Dashboard Functionality
+class UserAccount:
+    def __init__(self, initial_balance=10000.0):
+        self.balance = initial_balance
+        self.transactions = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["type", "amount", "category", "date", "description"])
 
-    return st.session_state.monthly_investment, st.session_state.investment_duration
+    def credit(self, amount, description="Credit"):
+        self.balance += amount
+        transaction = {"type": "credit", "amount": amount, "category": "Credit", "date": str(date.today()), "description": description}
+        self.transactions = pd.concat([self.transactions, pd.DataFrame([transaction])], ignore_index=True)
+        self.save_transactions()
+        st.write(f"Credited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
 
-# Policy Recommendation
-def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
-    user_spending = np.array([[user_investment]])
-    predicted_category = spending_model.predict(user_spending)[0]
-    st.write(f"Predicted Spending Category: {predicted_category}")
-
-    if predicted_category == 'Low':
-        suitable_policies = policy_data[policy_data['ROI Category'] == 'Low']
-    elif predicted_category == 'Medium':
-        suitable_policies = policy_data[policy_data['ROI Category'] != 'Very High']
-    else:
-        suitable_policies = policy_data[policy_data['ROI Category'] == 'High']
-
-    if not suitable_policies.empty:
-        suitable_policies = suitable_policies.copy()
-        suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
-        recommended_policy = suitable_policies.loc[suitable_policies['Potential Return ($)'].idxmax()]
-
-        st.write("### Recommended Policy Based on Your Investment:")
-        st.write(recommended_policy[['Policy Name', 'Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment', 'Potential Return ($)']])
-
-        st.write("### Reasons for Selection:")
-        st.write(f"1. *Expected ROI*: The selected policy has an expected ROI of {recommended_policy['Expected ROI']}%, which aligns with your goals.")
-        st.write(f"2. *Potential Return*: Based on your investment of ${user_investment} over {investment_duration} months, the potential return is ${recommended_policy['Potential Return ($)']:.2f}.")
-        st.write(f"3. *Investment Duration*: The maturity period aligns with your investment duration of {investment_duration // 12} years.")
-        
-        return recommended_policy, suitable_policies
-    else:
-        st.write("No suitable policies found for your spending category.")
-        return None, None
-
-# Visualization
-def visualize_policy_comparison(suitable_policies):
-    if suitable_policies is not None and not suitable_policies.empty:
-        # Filter to show only the top 5 policies based on Potential Return
-        top_policies = suitable_policies.nlargest(5, 'Potential Return ($)')
-
-        # Set up the plot
-        plt.figure(figsize=(10, 6))
-        sns.set_style("whitegrid")
-        
-        # Plot horizontal bar chart for top 5 policies
-        bar_plot = sns.barplot(
-            data=top_policies,
-            y='Policy Name',
-            x='Potential Return ($)',
-            palette='viridis',
-            edgecolor='black'
-        )
-        
-        # Adding labels and customizing the plot
-        plt.title("Top 5 Investment Policies by Potential Return", fontsize=16, weight='bold')
-        plt.xlabel("Potential Return ($)", fontsize=14)
-        plt.ylabel("Policy Name", fontsize=14)
-
-        # Add value labels to each bar
-        for index, value in enumerate(top_policies['Potential Return ($)']):
-            bar_plot.text(value, index, f'${value:,.2f}', color='black', va="center")
-
-        # Display the plot in Streamlit
-        st.pyplot(plt)
-    else:
-        st.write("No suitable policies to visualize.")
-
-
-def display_policy_suggestion():
-    """
-    Display the policy suggestion based on the user input
-    """
-    st.title("Investment Policy Suggestion")
-
-    # Get user input
-    monthly_investment, investment_duration = get_user_input()
-
-    # Wait until the input is submitted
-    if st.session_state.get("input_submitted", False):
-        if st.button('Analyze'):
-            recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-            
-            if recommended_policy is not None and suitable_policies is not None:
-                visualize_policy_comparison(suitable_policies)
+    def debit(self, amount, description="Debit"):
+        if self.balance >= amount:
+            self.balance -= amount
+            transaction = {"type": "debit", "amount": amount, "category": "Debit", "date": str(date.today()), "description": description}
+            self.transactions = pd.concat([self.transactions, pd.DataFrame([transaction])], ignore_index=True)
+            self.save_transactions()
+            st.write(f"Debited: INR {amount:.2f}. New Balance: INR {self.balance:.2f}")
         else:
-            st.write("Please click 'Analyze' after filling out your investment details.")
+            st.write("Insufficient balance!")
+
+    def save_transactions(self):
+        self.transactions.to_csv("data/expenses.csv", index=False)
+
+# Initialize a user account instance
+user_account = UserAccount()
+
+# Bill Splitting Feature
+class BillSplitting:
+    def __init__(self):
+        self.groups = {}
+
+    def create_group(self, group_name, members):
+        self.groups[group_name] = {"members": members, "debts": {member: 0 for member in members}}
+
+    def split_bill(self, group_name, total_amount):
+        if group_name in self.groups:
+            num_members = len(self.groups[group_name]["members"])
+            split_amount = total_amount / num_members
+            self.groups[group_name]["debts"] = {member: split_amount for member in self.groups[group_name]["members"]}
+            st.success(f"Bill of INR {total_amount} split equally among the group.")
+        else:
+            st.error("Group not found.")
+
+    def show_debts(self, group_name):
+        if group_name in self.groups:
+            st.write("Current debts for group:", group_name)
+            for member, debt in self.groups[group_name]["debts"].items():
+                st.write(f"{member}: INR {debt:.2f}")
+        else:
+            st.error("Group not found.")
+
+bill_splitting = BillSplitting()
+
+def expense_dashboard():
+    st.title("Expense Manager Dashboard")
+    st.header(f"Welcome, {st.session_state.username}!")
+
+    # Display current balance
+    st.header(f"Current Balance: INR {user_account.balance:.2f}")
+
+    # Expense Management Section
+    with st.expander("Expense Management"):
+        st.subheader("Add an Expense")
+        amount = st.number_input("Amount", min_value=0.0, step=0.01)
+        category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
+        expense_date = st.date_input("Date", value=date.today())
+        description = st.text_input("Enter Description", "") if category == "Others" else ""
+
+        if st.button("Add Expense", key="add_expense"):
+            expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
+            expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
+            expenses = pd.concat([expenses, expense_data], ignore_index=True)
+            expenses.to_csv("data/expenses.csv", index=False)
+            st.success(f"Expense of {amount} in category {category} added.")
+            user_account.debit(amount, description=description if description else category)
+
+        st.subheader("Your Expenses")
+        expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
+        st.dataframe(expenses)
+
+    # Investment Policy Suggestions Section
+    if st.session_state.get("is_profile_set", False):
+        with st.expander("Investment Policy Suggestions (ML Models)"):
+            st.subheader("Investment Suggestions")
+            monthly_investment, investment_duration = get_user_input()
+            if st.button("Analyze Investment", key="analyze_investment"):
+                st.session_state.input_submitted = True
+                recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+                if recommended_policy is not None and suitable_policies is not None:
+                    visualize_policy_comparison(suitable_policies)
+                display_policy_suggestion(monthly_investment, investment_duration)
+
+    # SMS Classification Section
+    with st.expander("SMS Classification"):
+        st.subheader("SMS Classification")
+        message = st.text_area("Paste your bank message here", key="sms_input_unique")
+        if st.button("Analyze SMS", key="analyze_sms_button"):
+            label = classify_message(message)
+            if label == 'spam':
+                st.write("This message appears to be spam.")
+            else:
+                st.write("Non-spam message detected.")
+                transaction_type, amount = extract_transaction_details(message)
+                if transaction_type and amount > 0:
+                    st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
+                    if transaction_type == 'debit':
+                        user_account.debit(amount)
+                        st.success("Transaction debited and balance updated!")
+
+    # Bill Splitting Section
+    with st.expander("Bill Splitting"):
+        st.subheader("Create a Group")
+        group_name = st.text_input("Group Name")
+        group_members = st.text_area("Enter group members (comma separated)").split(",")
+        group_members = [member.strip() for member in group_members]
+        
+        if st.button("Create Group"):
+            if group_name and len(group_members) > 1:
+                bill_splitting.create_group(group_name, group_members)
+                st.success(f"Group '{group_name}' created successfully with members: {', '.join(group_members)}.")
+            else:
+                st.error("Please enter a valid group name and members.")
+        
+        st.subheader("Split a Bill")
+        group_to_split = st.selectbox("Select Group", list(bill_splitting.groups.keys()))
+        total_bill_amount = st.number_input("Total Bill Amount", min_value=0.0, step=0.01)
+        
+        if st.button("Split Bill"):
+            bill_splitting.split_bill(group_to_split, total_bill_amount)
+        
+        if st.button("Show Debts"):
+            bill_splitting.show_debts(group_to_split)
+
+# Main Application Flow
+def main():
+    if "username" in st.session_state:
+        if "is_profile_set" not in st.session_state:
+            setup_profile()
+        else:
+            expense_dashboard()
+    else:
+        # Login page
+        st.subheader("Login")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+
+        if st.button("Login"):
+            if authenticate(username, password):
+                st.session_state.username = username
+                st.session_state.is_logged_in = True
+                st.experimental_rerun()
+            else:
+                st.error("Invalid credentials")
+
+        if st.button("Sign Up"):
+            st.session_state.is_signup = True
+            st.experimental_rerun()
+
+if __name__ == "__main__":
+    main()
