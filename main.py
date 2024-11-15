@@ -215,6 +215,9 @@ if "is_profile_set" not in st.session_state:
     st.session_state.is_profile_set = False
 if "input_submitted" not in st.session_state:
     st.session_state.input_submitted = False
+if "is_signing_up" not in st.session_state:
+    st.session_state.is_signing_up = False
+
 
 if "username" in st.session_state and st.session_state.username:
     if not st.session_state.is_profile_set:
@@ -242,7 +245,7 @@ else:
     with new_user_col:
         if st.button("New User", key="new_user_button"):
             st.session_state.is_signing_up = True  # Trigger the sign-up process
-            st.experimental_rerun()
+            st.experimental_rerun()  # This will cause the app to rerun and show the signup form
 
     st.markdown("[Forgotten account?](#)")
 
