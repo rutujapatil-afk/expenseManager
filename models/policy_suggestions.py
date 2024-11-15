@@ -102,6 +102,7 @@ def get_user_input():
     return st.session_state.monthly_investment, st.session_state.investment_duration
 
 # Policy Recommendation
+# Policy Recommendation function
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
     user_spending = np.array([[user_investment]])
     predicted_category = spending_model.predict(user_spending)[0]
@@ -118,14 +119,25 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
     if not suitable_policies.empty:
         suitable_policies = suitable_policies.copy()
         
-        # Calculate potential returns
-        suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
+        # Clean and convert 'Investment Horizon' to numeric, handle invalid or missing data
+        suitable_policies['Investment Horizon'] = pd.to_numeric(suitable_policies['Investment Horizon'], errors='coerce')
+        
+        # Drop rows with NaN values in 'Investment Horizon' (if any)
+        suitable_policies = suitable_policies.dropna(subset=['Investment Horizon'])
 
         # Further filtering based on other factors
         suitable_policies = suitable_policies[suitable_policies['Minimum Investment'] <= user_investment]
+        
+        # Check for any rows with invalid or NaN 'Investment Horizon'
+        if suitable_policies.empty:
+            st.write("No suitable policies found with valid 'Investment Horizon'.")
+            return None, None
+        
+        # Filter based on 'Investment Horizon'
         suitable_policies = suitable_policies[suitable_policies['Investment Horizon'] >= investment_duration]
 
         # Select the top policy with highest potential return
+        suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
         recommended_policy = suitable_policies.loc[suitable_policies['Potential Return ($)'].idxmax()]
 
         st.write("### Recommended Policy Based on Your Investment:")
