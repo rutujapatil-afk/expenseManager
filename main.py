@@ -199,36 +199,38 @@ def main():
         expense_dashboard()
 
 def login_page():
-    st.title("Expense Manager")
+    st.title("Expense Manager Login")
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
+    
     if st.button("Login"):
         if authenticate(username, password):
-            st.success("Login successful")
+            st.session_state.username = username
+            st.success("Login successful!")
             st.experimental_rerun()
         else:
-            st.error("Invalid credentials")
-
-    st.subheader("New User?")
-    if st.button("New User"):
-        sign_up_page()
-
-def sign_up_page():
-    st.title("Sign Up for Expense Manager")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    confirm_password = st.text_input("Confirm Password", type="password")
-
-    if password != confirm_password:
-        st.error("Passwords do not match.")
+            st.error("Invalid username or password.")
 
     if st.button("Sign Up"):
+        st.session_state.is_signup = True
+        signup_page()
+
+def signup_page():
+    st.title("Create a New Account")
+    username = st.text_input("Choose Username")
+    password = st.text_input("Choose Password", type="password")
+    confirm_password = st.text_input("Confirm Password", type="password")
+    
+    if password != confirm_password:
+        st.error("Passwords do not match.")
+    elif st.button("Register"):
         if register_user(username, password):
-            st.success("Account created successfully! Please log in.")
+            st.session_state.username = username
+            st.session_state.is_signup = False
+            st.success("Account created successfully!")
             st.experimental_rerun()
         else:
             st.error("Username already exists.")
 
-# Run main function
 if __name__ == "__main__":
     main()
