@@ -15,33 +15,38 @@ users_file = "data/users.csv"
 
 # Create the users CSV file if it doesn't exist
 if not os.path.exists(users_file):
-    pd.DataFrame(columns=["username", "password"]).to_csv(users_file, index=False)
+    pd.DataFrame(columns=["username", "password", "is_profile_set"]).to_csv(users_file, index=False)
 
 def load_users():
     try:
         users = pd.read_csv(users_file)
-        if "username" not in users.columns or "password" not in users.columns:
-            st.error("CSV file must contain 'username' and 'password' columns.")
-            return pd.DataFrame(columns=["username", "password"])
+        if "username" not in users.columns or "password" not in users.columns or "is_profile_set" not in users.columns:
+            st.error("CSV file must contain 'username', 'password', and 'is_profile_set' columns.")
+            return pd.DataFrame(columns=["username", "password", "is_profile_set"])
         return users
     except Exception as e:
         st.error(f"Error loading users: {e}")
-        return pd.DataFrame(columns=["username", "password"])
+        return pd.DataFrame(columns=["username", "password", "is_profile_set"])
 
 def save_user(username, password):
     hashed_password = hash_password(password)
-    new_user = pd.DataFrame([[username, hashed_password]], columns=["username", "password"])
+    new_user = pd.DataFrame([[username, hashed_password, False]], columns=["username", "password", "is_profile_set"])
     new_user.to_csv(users_file, mode="a", header=False, index=False)
 
 def authenticate(username, password):
     users = load_users()
     hashed_password = hash_password(password)
-    try:
-        user = users[(users["username"] == username) & (users["password"] == hashed_password)]
-        return not user.empty
-    except KeyError:
-        st.error("CSV file is missing required columns 'username' or 'password'.")
-        return False
+    user = users[(users["username"] == username) & (users["password"] == hashed_password)]
+    if not user.empty:
+        st.session_state.username = username
+        st.session_state.is_profile_set = user.iloc[0]["is_profile_set"]
+        return True
+    return False
+
+def update_profile_status(username):
+    users = load_users()
+    users.loc[users["username"] == username, "is_profile_set"] = True
+    users.to_csv(users_file, index=False)
 
 def register_user(username, password):
     users = load_users()
@@ -49,6 +54,19 @@ def register_user(username, password):
         return False
     save_user(username, password)
     return True
+
+# Profile Setup Function
+def setup_profile():
+    st.subheader("Complete Profile Setup")
+    name = st.text_input("Enter your name")
+    age = st.number_input("Enter your age", min_value=18, max_value=100, step=1)
+    investment_goal = st.selectbox("Select your primary investment goal", ["Wealth Growth", "Retirement", "Education", "Emergency Fund"])
+
+    if st.button("Save Profile"):
+        st.session_state.is_profile_set = True
+        update_profile_status(st.session_state.username)
+        st.success("Profile setup complete! Accessing your dashboard.")
+        st.experimental_rerun()
 
 # Dashboard Functionality
 class UserAccount:
@@ -81,17 +99,14 @@ user_account = UserAccount()
 
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
+    st.header(f"Welcome, {st.session_state.username}!")
 
     # Display current balance
     st.header(f"Current Balance: INR {user_account.balance:.2f}")
-    
-    # Welcome message
-    st.header(f"Welcome, {st.session_state.username}!")
 
     # Expense Management Section
     with st.expander("Expense Management"):
         st.subheader("Add an Expense")
-
         amount = st.number_input("Amount", min_value=0.0, step=0.01)
         category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
         expense_date = st.date_input("Date", value=date.today())
@@ -110,8 +125,7 @@ def expense_dashboard():
         st.dataframe(expenses)
 
     # Investment Policy Suggestions Section
-    profile_loaded = st.session_state.get("is_profile_set", False)
-    if profile_loaded:
+    if st.session_state.is_profile_set:
         with st.expander("Investment Policy Suggestions (ML Models)"):
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
@@ -146,7 +160,6 @@ def expense_dashboard():
     # Bill Splitting Section
     with st.expander("Bill Splitting"):
         st.subheader("Create a Group")
-        
         if "groups" not in st.session_state:
             st.session_state.groups = {}
         if "debts" not in st.session_state:
@@ -176,33 +189,20 @@ def expense_dashboard():
                     split_amount = total_amount / len(members_list)
                     st.write(f"Each member owes INR {split_amount:.2f}.")
                     
-                    # Update debts
                     for member in members_list:
-                        if member != st.session_state.username:  # Skip the user splitting the bill
-                            st.session_state.debts[member] = st.session_state.debts.get(member, 0) + split_amount
+                        if member != st.session_state.username:
+                            st.session_state.debts[(st.session_state.username, member)] = st.session_state.debts.get((st.session_state.username, member), 0) + split_amount
                     
                     st.session_state.groups[group_name]["transactions"].append({
-                        "amount": total_amount,
-                        "type": transaction_type,
-                        "category": category,
-                        "description": description,
                         "date": str(split_date),
-                        "split_amount": split_amount
+                        "amount": total_amount,
+                        "split_amount": split_amount,
+                        "category": category,
+                        "description": description
                     })
                     st.success("Bill split successfully!")
-                else:
-                    st.error("Please enter a valid amount and group.")
-        
-        # Display debts
-        if st.session_state.debts:
-            st.subheader("Debts Summary")
-            for member, debt in st.session_state.debts.items():
-                if debt > 0:
-                    st.write(f"You owe {member}: INR {debt:.2f}")
-                elif debt < 0:
-                    st.write(f"{member} owes you: INR {-debt:.2f}")
 
-# Login/Signup Section
+# Main Application Logic
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -218,7 +218,8 @@ if not st.session_state.authenticated:
             if authenticate(username, password):
                 st.success("Logged in successfully!")
                 st.session_state.authenticated = True
-                st.session_state.username = username
+                if not st.session_state.is_profile_set:
+                    setup_profile()
             else:
                 st.error("Invalid username or password. Please try again.")
     elif option == "Signup":
@@ -234,5 +235,7 @@ if not st.session_state.authenticated:
             else:
                 st.error("Passwords do not match. Please try again.")
 else:
-    # Show Dashboard
-    expense_dashboard()
+    if st.session_state.is_profile_set:
+        expense_dashboard()
+    else:
+        setup_profile()
