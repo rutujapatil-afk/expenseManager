@@ -62,7 +62,6 @@ def setup_profile():
     investment_goal = st.selectbox("Select your primary investment goal", ["Wealth Growth", "Retirement", "Education", "Emergency Fund"])
 
     if st.button("Save Profile"):
-        # Store the profile data in session state or perform other actions as needed
         st.session_state.is_profile_set = True
         st.session_state.name = name
         st.session_state.phone_number = phone_number
@@ -166,31 +165,38 @@ def expense_dashboard():
     # Bill Splitting Section
     with st.expander("Bill Splitting"):
         st.subheader("Create a Group")
-        if "groups" not in st.session_state:
-            st.session_state.groups = {}
-        if "debts" not in st.session_state:
-            st.session_state.debts = {}
+        
+        registered_users = load_users()["username"].values.tolist()
+        if "current_group_members" not in st.session_state:
+            st.session_state.current_group_members = []
 
         group_name = st.text_input("Enter Group Name")
-        members = st.text_area("Enter group members (comma-separated)")
-        members_list = [member.strip() for member in members.split(",") if member.strip()]
+        new_member = st.text_input("Enter Username of Group Member")
         
-        if st.button("Create Group"):
-            if group_name and members_list:
-                st.success(f"Group '{group_name}' created with members: {', '.join(members_list)}")
-                st.session_state.groups[group_name] = {"members": members_list, "transactions": []}
+        if st.button("Add Member"):
+            if new_member in registered_users and new_member not in st.session_state.current_group_members:
+                st.session_state.current_group_members.append(new_member)
+                st.success(f"Added member: {new_member}")
+            elif new_member in st.session_state.current_group_members:
+                st.warning(f"'{new_member}' is already added.")
             else:
-                st.error("Please provide a valid group name and at least one member.")
+                st.error("Username does not exist.")
         
-        if group_name in st.session_state.groups:
-            st.subheader("Split a Bill")
-            bill_amount = st.number_input("Enter total bill amount")
-            selected_member = st.selectbox("Select member to assign debt to", st.session_state.groups[group_name]["members"])
-            if st.button("Assign Debt"):
-                st.session_state.debts[selected_member] = bill_amount / len(st.session_state.groups[group_name]["members"])
-                st.success(f"Assigned debt of INR {bill_amount / len(st.session_state.groups[group_name]['members']):.2f} to each member.")
-        
-            st.write("Current Debts:", st.session_state.debts)
+            if len(st.session_state.current_group_members) == 6:
+                st.warning("Maximum group size reached.")
+
+        st.write("Current Group Members:", ", ".join(st.session_state.current_group_members))
+
+        if st.button("Create Group"):
+            if group_name and st.session_state.current_group_members:
+                st.session_state.groups[group_name] = {
+                    "members": st.session_state.current_group_members,
+                    "transactions": [],
+                }
+                st.success(f"Group '{group_name}' created!")
+                st.session_state.current_group_members = []
+            else:
+                st.error("Please provide a group name and at least one member.")
 
 # Main Flow Logic
 if "username" not in st.session_state:
@@ -198,32 +204,33 @@ if "username" not in st.session_state:
 if "is_profile_set" not in st.session_state:
     st.session_state.is_profile_set = False
 
-st.title("Expense Manager")
+st.title("Expense Manager Application")
+if "groups" not in st.session_state:
+    st.session_state.groups = {}
 
-if not st.session_state.username:
-    # Login Page
-    st.subheader("Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Login"):
-        if authenticate(username, password):
-            st.session_state.username = username
-            st.success("Login successful!")
-            st.experimental_rerun()
-        else:
-            st.error("Invalid username or password.")
-
-    if st.button("New User"):
-        st.session_state.username = username
-        st.experimental_rerun()
-        # The Sign-up form can be handled here or in a separate function
-
-else:
-    # If the profile is not set, guide the user to complete their profile setup
+if "username" in st.session_state and st.session_state.username:
     if not st.session_state.is_profile_set:
         setup_profile()
-
-    # Show Dashboard
     else:
         expense_dashboard()
+else:
+    option = st.sidebar.selectbox("Choose an option", ["Login", "Sign Up"])
+    if option == "Login":
+        st.subheader("Login")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.button("Login"):
+            if authenticate(username, password):
+                st.success("Logged in successfully!")
+                st.experimental_rerun()
+            else:
+                st.error("Invalid credentials.")
+    elif option == "Sign Up":
+        st.subheader("Sign Up")
+        username = st.text_input("Choose a Username")
+        password = st.text_input("Choose a Password", type="password")
+        if st.button("Sign Up"):
+            if register_user(username, password):
+                st.success("Account created successfully! You can now log in.")
+            else:
+                st.error("Username already taken.")
