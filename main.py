@@ -184,56 +184,46 @@ def expense_dashboard():
         
         if group_name in st.session_state.groups:
             st.subheader("Split a Bill")
-            total_amount = st.number_input("Total Amount", min_value=0.0, step=0.01)
-            transaction_type = st.selectbox("Transaction Type", ["Cash", "Online"])
-            category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
-            description = st.text_input("Description") if category == "Others" else ""
-            split_date = date.today()
-            
-            if st.button("Split"):
-                if total_amount > 0 and members_list:
-                    split_amount = total_amount / len(members_list)
-                    st.write(f"Each member owes INR {split_amount:.2f}")
-                    st.session_state.groups[group_name]["transactions"].append({
-                        "total_amount": total_amount,
-                        "transaction_type": transaction_type,
-                        "category": category,
-                        "description": description,
-                        "date": split_date,
-                        "split_amount": split_amount,
-                        "members": members_list
-                    })
-                    st.success(f"Bill of INR {total_amount} split among {len(members_list)} members.")
-                else:
-                    st.error("Enter a valid total amount and member list.")
+            bill_amount = st.number_input("Enter total bill amount")
+            selected_member = st.selectbox("Select member to assign debt to", st.session_state.groups[group_name]["members"])
+            if st.button("Assign Debt"):
+                st.session_state.debts[selected_member] = bill_amount / len(st.session_state.groups[group_name]["members"])
+                st.success(f"Assigned debt of INR {bill_amount / len(st.session_state.groups[group_name]['members']):.2f} to each member.")
+        
+            st.write("Current Debts:", st.session_state.debts)
 
-# Main App Flow
+# Main Flow Logic
 if "username" not in st.session_state:
-    login_or_signup = st.selectbox("Select Action", ["Login", "Sign Up"])
-    
-    if login_or_signup == "Login":
-        st.subheader("Login to Your Account")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        if st.button("Login"):
-            if authenticate(username, password):
-                st.success("Login successful!")
-                st.session_state.username = username
-                expense_dashboard()
-            else:
-                st.error("Invalid username or password.")
-    
-    elif login_or_signup == "Sign Up":
-        st.subheader("Create a New Account")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        if st.button("Sign Up"):
-            if register_user(username, password):
-                st.success("Account created successfully. Please log in.")
-            else:
-                st.error("Username already exists.")
+    st.session_state.username = ""
+if "is_profile_set" not in st.session_state:
+    st.session_state.is_profile_set = False
+
+st.title("Expense Manager")
+
+if not st.session_state.username:
+    # Login Page
+    st.subheader("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Login"):
+        if authenticate(username, password):
+            st.session_state.username = username
+            st.success("Login successful!")
+            st.experimental_rerun()
+        else:
+            st.error("Invalid username or password.")
+
+    if st.button("New User"):
+        st.session_state.username = username
+        st.experimental_rerun()
+        # The Sign-up form can be handled here or in a separate function
+
 else:
-    if st.session_state.get("is_profile_set", False):
-        expense_dashboard()
-    else:
+    # If the profile is not set, guide the user to complete their profile setup
+    if not st.session_state.is_profile_set:
         setup_profile()
+
+    # Show Dashboard
+    else:
+        expense_dashboard()
