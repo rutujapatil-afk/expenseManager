@@ -106,9 +106,6 @@ def expense_dashboard():
     st.title("Expense Manager Dashboard")
     st.header(f"Welcome, {st.session_state.username}!")
 
-    # Display current balance
-    st.header(f"Current Balance: INR {user_account.balance:.2f}")
-
     # Expense Management Section
     with st.expander("Expense Management"):
         st.subheader("Add an Expense")
