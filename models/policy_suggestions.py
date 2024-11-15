@@ -187,29 +187,20 @@ def visualize_policy_comparison(suitable_policies):
 
         # Add value labels to each bar
         for index, value in enumerate(top_policies['Potential Return ($)']):
-            bar_plot.text(value, index, f'${value:,.2f}', color='black', va="center")
-
-        # Display the plot in Streamlit
+            bar_plot.text(value, index, f"${value:,.2f}", color='black', ha="left", va="center")
+        
         st.pyplot(plt)
-    else:
-        st.write("No suitable policies to visualize.")
 
+# Main execution flow
+def main():
+    # Collect user input
+    user_investment, investment_duration = get_user_input()
 
-def display_policy_suggestion():
-    """
-    Display the policy suggestion based on the user input
-    """
-    st.title("Investment Policy Suggestion")
+    if user_investment is None or investment_duration is None:
+        return
 
-    # Get user input
-    monthly_investment, investment_duration = get_user_input()
-
-    # Wait until the input is submitted
-    if st.session_state.get("input_submitted", False):
-        if st.button('Analyze'):
-            recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-            
-            if recommended_policy is not None and suitable_policies is not None:
-                visualize_policy_comparison(suitable_policies)
-        else:
-            st.write("Please click 'Analyze' after filling out your investment details.")
+    # Get recommendations
+    recommended_policy, suitable_policies = recommend_policy(user_investment, investment_duration, policy_data, model_spending)
+    
+    if recommended_policy is not None:
+        visualize_policy_comparison(suitable_policies)
