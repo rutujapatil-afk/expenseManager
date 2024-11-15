@@ -15,22 +15,22 @@ users_file = "data/users.csv"
 
 # Create the users CSV file if it doesn't exist
 if not os.path.exists(users_file):
-    pd.DataFrame(columns=["username", "password", "is_profile_set"]).to_csv(users_file, index=False)
+    pd.DataFrame(columns=["username", "password"]).to_csv(users_file, index=False)
 
 def load_users():
     try:
         users = pd.read_csv(users_file)
-        if "username" not in users.columns or "password" not in users.columns or "is_profile_set" not in users.columns:
-            st.error("CSV file must contain 'username', 'password', and 'is_profile_set' columns.")
-            return pd.DataFrame(columns=["username", "password", "is_profile_set"])
+        if "username" not in users.columns or "password" not in users.columns:
+            st.error("CSV file must contain 'username' and 'password' columns.")
+            return pd.DataFrame(columns=["username", "password"])
         return users
     except Exception as e:
         st.error(f"Error loading users: {e}")
-        return pd.DataFrame(columns=["username", "password", "is_profile_set"])
+        return pd.DataFrame(columns=["username", "password"])
 
 def save_user(username, password):
     hashed_password = hash_password(password)
-    new_user = pd.DataFrame([[username, hashed_password, False]], columns=["username", "password", "is_profile_set"])
+    new_user = pd.DataFrame([[username, hashed_password]], columns=["username", "password"])
     new_user.to_csv(users_file, mode="a", header=False, index=False)
 
 def authenticate(username, password):
@@ -39,14 +39,8 @@ def authenticate(username, password):
     user = users[(users["username"] == username) & (users["password"] == hashed_password)]
     if not user.empty:
         st.session_state.username = username
-        st.session_state.is_profile_set = user.iloc[0]["is_profile_set"]
         return True
     return False
-
-def update_profile_status(username):
-    users = load_users()
-    users.loc[users["username"] == username, "is_profile_set"] = True
-    users.to_csv(users_file, index=False)
 
 def register_user(username, password):
     users = load_users()
@@ -64,7 +58,6 @@ def setup_profile():
 
     if st.button("Save Profile"):
         st.session_state.is_profile_set = True
-        update_profile_status(st.session_state.username)
         st.success("Profile setup complete! Accessing your dashboard.")
         st.experimental_rerun()
 
@@ -125,7 +118,7 @@ def expense_dashboard():
         st.dataframe(expenses)
 
     # Investment Policy Suggestions Section
-    if st.session_state.is_profile_set:
+    if st.session_state.get("is_profile_set", False):
         with st.expander("Investment Policy Suggestions (ML Models)"):
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
@@ -216,9 +209,25 @@ def login_page():
         else:
             st.error("Invalid credentials")
 
-    st.subheader("Sign up for Expense Manager")
+    st.subheader("New User?")
     if st.button("Sign up"):
-        st.experimental_rerun()
+        sign_up_page()
+
+def sign_up_page():
+    st.title("Sign Up for Expense Manager")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    confirm_password = st.text_input("Confirm Password", type="password")
+
+    if password != confirm_password:
+        st.error("Passwords do not match.")
+
+    if st.button("Sign Up"):
+        if register_user(username, password):
+            st.success("Account created successfully! Please log in.")
+            st.experimental_rerun()
+        else:
+            st.error("Username already exists.")
 
 # Run main function
 if __name__ == "__main__":
