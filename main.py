@@ -210,7 +210,7 @@ def login_page():
             st.error("Invalid credentials")
 
     st.subheader("New User?")
-    if st.button("Sign up"):
+    if st.button("New User"):
         sign_up_page()
 
 def sign_up_page():
