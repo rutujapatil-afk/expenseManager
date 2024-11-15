@@ -178,41 +178,73 @@ def expense_dashboard():
                 st.session_state.current_group_members.append(new_member)
                 st.success(f"Added member: {new_member}")
             elif new_member in st.session_state.current_group_members:
-                st.warning(f"{new_member} is already in the group!")
+                st.warning(f"'{new_member}' is already added.")
             else:
-                st.warning("User not registered.")
+                st.error("Username does not exist.")
         
-        st.write("Group Members:")
-        st.write(st.session_state.current_group_members)
+            if len(st.session_state.current_group_members) == 6:
+                st.warning("Maximum group size reached.")
 
-    # Logout Section
-    if st.button("Logout"):
-        st.session_state.clear()
-        st.experimental_rerun()
+        st.write("Current Group Members:", ", ".join(st.session_state.current_group_members))
 
-# App flow
-if 'username' not in st.session_state:
-    user_option = st.radio("Select option", ["Login", "New User"])
-    if user_option == "Login":
-        login_username = st.text_input("Username")
-        login_password = st.text_input("Password", type="password")
-        if st.button("Login"):
-            if authenticate(login_username, login_password):
-                st.session_state.logged_in = True
-                expense_dashboard()
+        if st.button("Create Group"):
+            if group_name and st.session_state.current_group_members:
+                st.session_state.groups[group_name] = {
+                    "members": st.session_state.current_group_members,
+                    "transactions": [],
+                }
+                st.success(f"Group '{group_name}' created!")
+                st.session_state.current_group_members = []
             else:
-                st.error("Invalid username or password")
-    elif user_option == "New User":
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        confirm_password = st.text_input("Confirm Password", type="password")
-        if password == confirm_password:
-            if st.button("Sign Up"):
-                if register_user(username, password):
-                    st.success("Account created successfully! Please complete your profile.")
-                    st.session_state.logged_in = False
-                    setup_profile()
-                else:
-                    st.error("Username already exists")
-        else:
-            st.error("Passwords do not match")
+                st.error("Please provide a group name and at least one member.")
+
+# Main Flow Logic
+if "username" not in st.session_state:
+    st.session_state.username = ""
+if "is_profile_set" not in st.session_state:
+    st.session_state.is_profile_set = False
+if "input_submitted" not in st.session_state:
+    st.session_state.input_submitted = False
+
+if "username" in st.session_state and st.session_state.username:
+    if not st.session_state.is_profile_set:
+        setup_profile()
+    else:
+        expense_dashboard()
+else:
+    st.header("Welcome to the Expense Manager!")
+    st.subheader("Log in to continue")
+
+    # Login Section
+    username = st.text_input("Enter your username", key="username_login")
+    password = st.text_input("Enter your password", type="password", key="password_login")
+    
+    login_col, new_user_col = st.columns(2)
+
+    with login_col:
+        if st.button("Login", key="login_button"):
+            if authenticate(username, password):
+                st.success(f"Logged in as {username}")
+                st.experimental_rerun()
+            else:
+                st.error("Incorrect username or password.")
+
+    with new_user_col:
+        if st.button("New User", key="new_user_button"):
+            st.session_state.is_signing_up = True  # Trigger the sign-up process
+            st.experimental_rerun()
+
+    st.markdown("[Forgotten account?](#)")
+
+    # Signup Section
+    if st.session_state.get("is_signing_up", False):
+        st.subheader("Sign up for a new account")
+        new_username = st.text_input("Enter a username", key="username_signup")
+        new_password = st.text_input("Enter a password", type="password", key="password_signup")
+
+        if st.button("Sign Up", key="signup_button"):
+            if register_user(new_username, new_password):
+                st.success(f"Account created for {new_username}. Please log in.")
+                st.session_state.is_signing_up = False  # Return to login after successful signup
+            else:
+                st.error("Username already exists.")
