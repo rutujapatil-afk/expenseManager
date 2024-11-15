@@ -71,7 +71,6 @@ def setup_profile():
         st.session_state.investment_goal = investment_goal
         
         st.success("Profile setup complete! Accessing your dashboard.")
-        st.experimental_rerun()
 
 # Dashboard Functionality
 class UserAccount:
@@ -119,7 +118,6 @@ def expense_dashboard():
         # Logout Button
         if st.button("Logout"):
             st.session_state.clear()
-            st.experimental_rerun()
 
     # Expense Management Section
     with st.expander("Expense Management"):
@@ -172,7 +170,6 @@ def expense_dashboard():
                     elif transaction_type == 'credit':
                         user_account.credit(amount)
                         st.success("Transaction credited and balance updated!")
-                    st.experimental_rerun()
 
     # Bill Splitting Section
     with st.expander("Bill Splitting"):
@@ -218,7 +215,6 @@ if "input_submitted" not in st.session_state:
 if "is_signing_up" not in st.session_state:
     st.session_state.is_signing_up = False
 
-
 if "username" in st.session_state and st.session_state.username:
     if not st.session_state.is_profile_set:
         setup_profile()
@@ -238,14 +234,12 @@ else:
         if st.button("Login", key="login_button"):
             if authenticate(username, password):
                 st.success(f"Logged in as {username}")
-                st.experimental_rerun()
             else:
                 st.error("Incorrect username or password.")
 
     with new_user_col:
         if st.button("New User", key="new_user_button"):
-            st.session_state.is_signing_up = True  # Trigger the sign-up process
-            st.experimental_rerun()  # This will cause the app to rerun and show the signup form
+            st.session_state.is_signing_up = True
 
     st.markdown("[Forgotten account?](#)")
 
@@ -258,6 +252,6 @@ else:
         if st.button("Sign Up", key="signup_button"):
             if register_user(new_username, new_password):
                 st.success(f"Account created for {new_username}. Please log in.")
-                st.session_state.is_signing_up = False  # Return to login after successful signup
+                st.session_state.is_signing_up = False
             else:
                 st.error("Username already exists.")
