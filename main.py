@@ -203,10 +203,8 @@ if "username" not in st.session_state:
     st.session_state.username = ""
 if "is_profile_set" not in st.session_state:
     st.session_state.is_profile_set = False
-
-st.title("Expense Manager Application")
-if "groups" not in st.session_state:
-    st.session_state.groups = {}
+if "input_submitted" not in st.session_state:
+    st.session_state.input_submitted = False
 
 if "username" in st.session_state and st.session_state.username:
     if not st.session_state.is_profile_set:
@@ -214,31 +212,39 @@ if "username" in st.session_state and st.session_state.username:
     else:
         expense_dashboard()
 else:
-    st.header("Login or Sign Up")
+    st.header("Welcome to the Expense Manager!")
+    st.subheader("Log in to continue")
 
-    # User selection interface
-    login_mode = st.radio("", ["Login", "Sign Up"], horizontal=True, label_visibility="collapsed")
+    # Login Section
+    username = st.text_input("Enter your username", key="username_login")
+    password = st.text_input("Enter your password", type="password", key="password_login")
+    
+    login_col, new_user_col = st.columns(2)
 
-    if login_mode == "Login":
-        st.subheader("Log in")
-        username = st.text_input("Enter your username", key="username_login")
-        password = st.text_input("Enter your password", type="password", key="password_login")
-
+    with login_col:
         if st.button("Login", key="login_button"):
             if authenticate(username, password):
                 st.success(f"Logged in as {username}")
                 st.experimental_rerun()
             else:
                 st.error("Incorrect username or password.")
-        st.markdown("[Forgotten account?](#)")
 
-    elif login_mode == "Sign Up":
-        st.subheader("Sign up")
-        username = st.text_input("Enter your username", key="username_signup")
-        password = st.text_input("Enter your password", type="password", key="password_signup")
+    with new_user_col:
+        if st.button("New User", key="new_user_button"):
+            st.session_state.is_signing_up = True  # Trigger the sign-up process
+            st.experimental_rerun()
+
+    st.markdown("[Forgotten account?](#)")
+
+    # Signup Section
+    if st.session_state.get("is_signing_up", False):
+        st.subheader("Sign up for a new account")
+        new_username = st.text_input("Enter a username", key="username_signup")
+        new_password = st.text_input("Enter a password", type="password", key="password_signup")
 
         if st.button("Sign Up", key="signup_button"):
-            if register_user(username, password):
-                st.success(f"Account created for {username}.")
+            if register_user(new_username, new_password):
+                st.success(f"Account created for {new_username}. Please log in.")
+                st.session_state.is_signing_up = False  # Return to login after successful signup
             else:
                 st.error("Username already exists.")
