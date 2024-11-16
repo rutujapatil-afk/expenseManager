@@ -159,9 +159,10 @@ def get_user_input():
 def recommend_policy(user_investment, investment_duration, policy_data, model_spending, le):
     # Using the model to recommend a policy
     recommended_policies = policy_data[
-        (policy_data['Expected ROI'] >= user_investment) &
+        (policy_data['Expected ROI'] >= user_investment) & 
         (policy_data['Investment Horizon'] >= investment_duration)
     ]
+    
     if len(recommended_policies) > 0:
         st.write("Recommended Policies Based on Your Investment Preferences:")
         st.write(recommended_policies)
