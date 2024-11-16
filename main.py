@@ -3,11 +3,8 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending
+from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
-
-print("Current Directory:", os.getcwd())
-print("Available Files:", os.listdir())
 
 # User Authentication Functions
 def hash_password(password):
@@ -55,7 +52,7 @@ def register_user(username, password):
 # Profile Setup Function
 def setup_profile():
     st.subheader("Complete Profile Setup")
-
+    
     # User input fields
     name = st.text_input("Enter your name")
     phone_number = st.text_input("Enter your phone number")
@@ -72,7 +69,7 @@ def setup_profile():
         st.session_state.gender = gender
         st.session_state.profession = profession
         st.session_state.investment_goal = investment_goal
-
+        
         st.success("Profile setup complete! Accessing your dashboard.")
 
 # Dashboard Functionality
@@ -104,21 +101,6 @@ class UserAccount:
 # Initialize a user account instance
 user_account = UserAccount()
 
-# Sample placeholder data for policy and model (replace with actual data or model)
-policy_data = pd.DataFrame({
-    'policy_name': ['Policy A', 'Policy B', 'Policy C'],
-    'investment_return': [7.5, 8.0, 6.5],  # Sample returns
-    'risk_level': ['Low', 'Medium', 'High']
-})
-
-model_spending = {'Low': 1000, 'Medium': 5000, 'High': 10000}  # Sample spending model
-
-def recommend_policy(monthly_investment, investment_duration, policy_data, model_spending):
-    # Implement logic to recommend policies based on investment details
-    suitable_policies = policy_data[policy_data['investment_return'] > (monthly_investment / investment_duration)]
-    recommended_policy = suitable_policies.iloc[0]  # Select the top policy
-    return recommended_policy, suitable_policies
-
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
     st.header(f"Welcome, {st.session_state.username}!")
@@ -145,29 +127,13 @@ def expense_dashboard():
         expense_date = st.date_input("Date", value=date.today())
         description = st.text_input("Enter Description", "") if category == "Others" else ""
 
-        split_expense = st.checkbox("Split Expense")
-
-        if split_expense:
-            st.subheader("Split Expense Details")
-            num_splits = st.number_input("Number of categories to split into", min_value=1, max_value=5, step=1)
-            split_categories = [st.text_input(f"Enter category {i + 1}") for i in range(num_splits)]
-            split_amounts = [st.number_input(f"Amount for category {i + 1}", min_value=0.0, step=0.01) for i in range(num_splits)]
-            if st.button("Add Split Expense"):
-                total_split_amount = sum(split_amounts)
-                if total_split_amount == amount:
-                    for i in range(num_splits):
-                        user_account.debit(split_amounts[i], description=split_categories[i])
-                        st.write(f"Added {split_amounts[i]} to {split_categories[i]}")
-                else:
-                    st.error("Total split amount must equal the original expense amount.")
-        else:
-            if st.button("Add Expense", key="add_expense"):
-                expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
-                expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
-                expenses = pd.concat([expenses, expense_data], ignore_index=True)
-                expenses.to_csv("data/expenses.csv", index=False)
-                st.success(f"Expense of {amount} in category {category} added.")
-                user_account.debit(amount, description=description if description else category)
+        if st.button("Add Expense", key="add_expense"):
+            expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
+            expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
+            expenses = pd.concat([expenses, expense_data], ignore_index=True)
+            expenses.to_csv("data/expenses.csv", index=False)
+            st.success(f"Expense of {amount} in category {category} added.")
+            user_account.debit(amount, description=description if description else category)
 
         st.subheader("Your Expenses")
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
@@ -176,70 +142,116 @@ def expense_dashboard():
     # Investment Policy Suggestions Section
     if st.session_state.get("is_profile_set", False):
         with st.expander("Investment Policy Suggestions (ML Models)"):
-
             st.subheader("Investment Suggestions")
-            # Collect user input for investment details
             monthly_investment, investment_duration = get_user_input()
-
-            # Calculate policy suggestions based on user input
-            if monthly_investment > 0 and investment_duration > 0:
+            if st.button("Analyze Investment", key="analyze_investment"):
+                st.session_state.input_submitted = True
                 recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-                if suitable_policies is not None:
-                    st.subheader("Recommended Policy:")
-                    st.write(f"Policy Name: {recommended_policy['policy_name']}")
-                    st.write(f"Investment Return: {recommended_policy['investment_return']}%")
-                    st.write(f"Risk Level: {recommended_policy['risk_level']}")
-
-                    st.subheader("Suitable Policies:")
-                    st.write(suitable_policies)
-                else:
-                    st.warning("No suitable policies found for your criteria.")
+                if recommended_policy is not None and suitable_policies is not None:
+                    visualize_policy_comparison(suitable_policies)
+                display_policy_suggestion(monthly_investment, investment_duration)
 
     # SMS Classification Section
-    if st.button("Analyze SMS for Transactions"):
-        sms_message = st.text_area("Enter your SMS message here")
-        transaction_details = extract_transaction_details(sms_message)
-        if transaction_details:
-            st.write(transaction_details)
-            transaction_type = classify_message(sms_message)
-            st.write(f"Transaction Type: {transaction_type}")
+    with st.expander("SMS Classification"):
+        st.subheader("SMS Classification")
+        message = st.text_area("Paste your bank message here", key="sms_input_unique")
+        if st.button("Analyze SMS", key="analyze_sms_button"):
+            label = classify_message(message)
+            if label == 'spam':
+                st.write("This message appears to be spam.")
+            else:
+                st.write("Non-spam message detected.")
+                transaction_type, amount = extract_transaction_details(message)
+                if transaction_type and amount > 0:
+                    st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
+                    if transaction_type == 'debit':
+                        user_account.debit(amount)
+                        st.success("Transaction debited and balance updated!")
+                    elif transaction_type == 'credit':
+                        user_account.credit(amount)
+                        st.success("Transaction credited and balance updated!")
 
-            amount = transaction_details.get("amount")
-            if transaction_type == "debit" and amount:
-                user_account.debit(amount)
-            elif transaction_type == "credit" and amount:
-                user_account.credit(amount)
+    # Bill Splitting Section
+    with st.expander("Bill Splitting"):
+        st.subheader("Create a Group")
+        
+        registered_users = load_users()["username"].values.tolist()
+        if "current_group_members" not in st.session_state:
+            st.session_state.current_group_members = []
 
-# Main function to handle login, profile setup, and dashboard display
-def main():
-    st.title("Expense Manager")
+        group_name = st.text_input("Enter Group Name")
+        new_member = st.text_input("Enter Username of Group Member")
+        
+        if st.button("Add Member"):
+            if new_member in registered_users and new_member not in st.session_state.current_group_members:
+                st.session_state.current_group_members.append(new_member)
+                st.success(f"Added member: {new_member}")
+            elif new_member in st.session_state.current_group_members:
+                st.warning(f"'{new_member}' is already added.")
+            else:
+                st.error("Username does not exist.")
+        
+            if len(st.session_state.current_group_members) == 6:
+                st.warning("Maximum group size reached.")
 
-    if "username" not in st.session_state:
-        st.subheader("Login or Register")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
+        st.write("Current Group Members:", ", ".join(st.session_state.current_group_members))
 
-        action = st.selectbox("Select action", ["Login", "Register"])
+        if st.button("Create Group"):
+            if group_name and st.session_state.current_group_members:
+                st.session_state.groups[group_name] = {
+                    "members": st.session_state.current_group_members,
+                    "transactions": [],
+                }
+                st.success(f"Group '{group_name}' created!")
+                st.session_state.current_group_members = []
 
-        if action == "Login" and st.button("Login"):
+# Main Flow Logic
+if "username" not in st.session_state:
+    st.session_state.username = ""
+if "is_profile_set" not in st.session_state:
+    st.session_state.is_profile_set = False
+if "input_submitted" not in st.session_state:
+    st.session_state.input_submitted = False
+if "is_signing_up" not in st.session_state:
+    st.session_state.is_signing_up = False
+
+if "username" in st.session_state and st.session_state.username:
+    if not st.session_state.is_profile_set:
+        setup_profile()
+    else:
+        expense_dashboard()
+else:
+    st.header("Welcome to the Expense Manager!")
+    st.subheader("Log in to continue")
+
+    # Login Section
+    username = st.text_input("Enter your username", key="username_login")
+    password = st.text_input("Enter your password", type="password", key="password_login")
+    
+    login_col, new_user_col = st.columns(2)
+
+    with login_col:
+        if st.button("Login", key="login_button"):
             if authenticate(username, password):
-                st.session_state.is_logged_in = True
-                st.session_state.username = username
-                expense_dashboard()
+                st.success(f"Logged in as {username}")
             else:
-                st.error("Invalid username or password!")
+                st.error("Incorrect username or password.")
 
-        elif action == "Register" and st.button("Register"):
-            if register_user(username, password):
-                st.success("Registration successful! You can now log in.")
+    with new_user_col:
+        if st.button("New User", key="new_user_button"):
+            st.session_state.is_signing_up = True
+
+    st.markdown("[Forgotten account?](#)")
+
+    # Signup Section
+    if st.session_state.get("is_signing_up", False):
+        st.subheader("Sign up for a new account")
+        new_username = st.text_input("Enter a username", key="username_signup")
+        new_password = st.text_input("Enter a password", type="password", key="password_signup")
+
+        if st.button("Sign Up", key="signup_button"):
+            if register_user(new_username, new_password):
+                st.success(f"Account created for {new_username}. Please log in.")
+                st.session_state.is_signing_up = False
             else:
-                st.error("Username already exists. Please try a different one.")
-
-    elif st.session_state.get("is_logged_in", False):
-        if not st.session_state.get("is_profile_set", False):
-            setup_profile()
-        else:
-            expense_dashboard()
-
-if __name__ == "__main__":
-    main()
+                st.error("Username already exists.")
