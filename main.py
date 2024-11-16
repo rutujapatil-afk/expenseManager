@@ -145,13 +145,29 @@ def expense_dashboard():
         expense_date = st.date_input("Date", value=date.today())
         description = st.text_input("Enter Description", "") if category == "Others" else ""
 
-        if st.button("Add Expense", key="add_expense"):
-            expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
-            expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
-            expenses = pd.concat([expenses, expense_data], ignore_index=True)
-            expenses.to_csv("data/expenses.csv", index=False)
-            st.success(f"Expense of {amount} in category {category} added.")
-            user_account.debit(amount, description=description if description else category)
+        split_expense = st.checkbox("Split Expense")
+
+        if split_expense:
+            st.subheader("Split Expense Details")
+            num_splits = st.number_input("Number of categories to split into", min_value=1, max_value=5, step=1)
+            split_categories = [st.text_input(f"Enter category {i + 1}") for i in range(num_splits)]
+            split_amounts = [st.number_input(f"Amount for category {i + 1}", min_value=0.0, step=0.01) for i in range(num_splits)]
+            if st.button("Add Split Expense"):
+                total_split_amount = sum(split_amounts)
+                if total_split_amount == amount:
+                    for i in range(num_splits):
+                        user_account.debit(split_amounts[i], description=split_categories[i])
+                        st.write(f"Added {split_amounts[i]} to {split_categories[i]}")
+                else:
+                    st.error("Total split amount must equal the original expense amount.")
+        else:
+            if st.button("Add Expense", key="add_expense"):
+                expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
+                expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
+                expenses = pd.concat([expenses, expense_data], ignore_index=True)
+                expenses.to_csv("data/expenses.csv", index=False)
+                st.success(f"Expense of {amount} in category {category} added.")
+                user_account.debit(amount, description=description if description else category)
 
         st.subheader("Your Expenses")
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
@@ -171,30 +187,30 @@ def expense_dashboard():
                 recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
 
                 if recommended_policy is not None and suitable_policies is not None:
-                    st.write(f"Recommended Policy: {recommended_policy['policy_name']}")
-                    st.write(f"Expected Return: {recommended_policy['investment_return']}%")
-                    st.write("Other Suitable Policies:")
-                    st.write(suitable_policies[['policy_name', 'investment_return']])
+                    st.subheader("Recommended Policy:")
+                    st.write(f"Policy Name: {recommended_policy['policy_name']}")
+                    st.write(f"Investment Return: {recommended_policy['investment_return']}%")
+                    st.write(f"Risk Level: {recommended_policy['risk_level']}")
+
+                    st.subheader("Suitable Policies:")
+                    st.write(suitable_policies)
+                else:
+                    st.warning("No suitable policies found for your criteria.")
 
     # SMS Classification Section
-    with st.expander("SMS Classification"):
-        st.subheader("SMS Classification")
-        message = st.text_area("Paste your bank message here", key="sms_input_unique")
-        if st.button("Analyze SMS", key="analyze_sms_button"):
-            label = classify_message(message)
-            if label == 'spam':
-                st.write("This message appears to be spam.")
-            else:
-                st.write("Non-spam message detected.")
-                transaction_type, amount = extract_transaction_details(message)
-                if transaction_type and amount > 0:
-                    st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
-                    if transaction_type == 'debit':
-                        user_account.debit(amount)
-                        st.success("Transaction debited and balance updated!")
-                    elif transaction_type == 'credit':
-                        user_account.credit(amount)
-                        st.success("Transaction credited and balance updated!")
+    if st.button("Analyze SMS for Transactions"):
+        sms_message = st.text_area("Enter your SMS message here")
+        transaction_details = extract_transaction_details(sms_message)
+        if transaction_details:
+            st.write(transaction_details)
+            transaction_type = classify_message(sms_message)
+            st.write(f"Transaction Type: {transaction_type}")
+
+            amount = transaction_details.get("amount")
+            if transaction_type == "debit" and amount:
+                user_account.debit(amount)
+            elif transaction_type == "credit" and amount:
+                user_account.credit(amount)
 
 # Main function to handle login, profile setup, and dashboard display
 def main():
