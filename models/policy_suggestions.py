@@ -5,7 +5,7 @@ import seaborn as sns
 import streamlit as st
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.preprocessing import LabelEncoder
 import joblib
 
@@ -55,6 +55,8 @@ def preprocess_data(spending_data, policy_data):
     policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
     
     if 'Expected ROI' in policy_data.columns:
+        # Ensure 'Expected ROI' is numeric
+        policy_data['Expected ROI'] = pd.to_numeric(policy_data['Expected ROI'], errors='coerce')
         policy_data['ROI Category'] = pd.cut(
             policy_data['Expected ROI'],
             bins=[0, 5, 10, 15, np.inf],
@@ -65,6 +67,7 @@ def preprocess_data(spending_data, policy_data):
         return None, None, None
 
     if 'Investment Horizon' in policy_data.columns:
+        # Convert 'Investment Horizon' to numeric values
         policy_data['Investment Horizon'] = policy_data['Investment Horizon'].str.extract(r'(\d+)', expand=False).astype(float)
     else:
         st.error("Column 'Investment Horizon' is missing from policy data.")
@@ -86,6 +89,7 @@ def train_models(monthly_spending, policy_data):
     model_spending = RandomForestClassifier(random_state=42)
     model_spending.fit(X_train_s, y_train_s)
     acc_spending = accuracy_score(y_test_s, model_spending.predict(X_test_s))
+    conf_matrix_s = confusion_matrix(y_test_s, model_spending.predict(X_test_s))
 
     # Train policy prediction model
     X_policy = policy_data[['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']]
@@ -95,15 +99,16 @@ def train_models(monthly_spending, policy_data):
     model_policy = RandomForestClassifier(random_state=42)
     model_policy.fit(X_train_p, y_train_p)
     acc_policy = accuracy_score(y_test_p, model_policy.predict(X_test_p))
+    conf_matrix_p = confusion_matrix(y_test_p, model_policy.predict(X_test_p))
 
     efficiency_metrics = {
         "Spending Prediction Accuracy": acc_spending * 100,
         "Policy Prediction Accuracy": acc_policy * 100,
     }
 
-    return model_spending, model_policy, efficiency_metrics, X_test_p, y_test_p
+    return model_spending, model_policy, efficiency_metrics, X_test_p, y_test_p, conf_matrix_s, conf_matrix_p
 
-model_spending, model_policy, efficiency_metrics, X_test_p, y_test_p = train_models(monthly_spending, policy_data)
+model_spending, model_policy, efficiency_metrics, X_test_p, y_test_p, conf_matrix_s, conf_matrix_p = train_models(monthly_spending, policy_data)
 
 # User Login Page
 def login():
