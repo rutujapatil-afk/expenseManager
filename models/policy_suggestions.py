@@ -185,7 +185,7 @@ def visualize_policy_comparison(top_policies):
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model, label_encoder):
     user_spending = np.array([[user_investment]])
     predicted_category = spending_model.predict
-        predicted_category = spending_model.predict(user_spending)
+    predicted_category = spending_model.predict(user_spending)
     
     # Filter policies based on user spending category
     if predicted_category == 'Low':
