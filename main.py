@@ -52,7 +52,7 @@ def register_user(username, password):
 # Profile Setup Function
 def setup_profile():
     st.subheader("Complete Profile Setup")
-    
+
     # User input fields
     name = st.text_input("Enter your name")
     phone_number = st.text_input("Enter your phone number")
@@ -69,7 +69,7 @@ def setup_profile():
         st.session_state.gender = gender
         st.session_state.profession = profession
         st.session_state.investment_goal = investment_goal
-        
+
         st.success("Profile setup complete! Accessing your dashboard.")
 
 # Dashboard Functionality
