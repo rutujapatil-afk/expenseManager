@@ -181,12 +181,10 @@ def expense_dashboard():
             # Collect user input for investment details
             monthly_investment, investment_duration = get_user_input()
 
-            if st.button("Analyze Investment", key="analyze_investment"):
-                st.session_state.input_submitted = True
-                # Pass the correct arguments to the recommend_policy function
+            # Calculate policy suggestions based on user input
+            if monthly_investment > 0 and investment_duration > 0:
                 recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-
-                if recommended_policy is not None and suitable_policies is not None:
+                if suitable_policies is not None:
                     st.subheader("Recommended Policy:")
                     st.write(f"Policy Name: {recommended_policy['policy_name']}")
                     st.write(f"Investment Return: {recommended_policy['investment_return']}%")
