@@ -15,31 +15,54 @@ def load_data():
     """
     Load the policy and spending data from CSV files.
     """
-    policy_data = pd.read_csv("data/insurance_policies_dataset.csv")
-    spending_data = pd.read_csv("data/transactions.csv")
-    return policy_data, spending_data
+    try:
+        policy_data = pd.read_csv("data/insurance_policies_dataset.csv")
+        spending_data = pd.read_csv("data/transactions.csv")
+        return policy_data, spending_data
+    except FileNotFoundError as e:
+        st.error(f"Error loading files: {e}")
+        return None, None
 
 policy_data, spending_data = load_data()
 
 # Data Preprocessing
 def preprocess_data(spending_data, policy_data):
+    """
+    Preprocess the spending and policy data to prepare it for analysis and modeling.
+    """
+    if spending_data is None or policy_data is None:
+        return None, None, None
+    
+    # Clean spending data
     spending_data.columns = spending_data.columns.str.strip()
     spending_data['Date'] = pd.to_datetime(spending_data['Date'])
+    
+    # Aggregate spending by month
     monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
     monthly_spending.rename(columns={'Amount': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
-
+    
+    # Convert month to numerical format and clean data
     monthly_spending['Month'] = monthly_spending['Month'].dt.year * 100 + monthly_spending['Month'].dt.month
     monthly_spending['Monthly Expense ($)'] = pd.to_numeric(monthly_spending['Monthly Expense ($)'], errors='coerce')
     monthly_spending = monthly_spending.dropna(subset=['Monthly Expense ($)'])
-    monthly_spending['Spending Category'] = pd.cut(monthly_spending['Monthly Expense ($)'],
-                                                    bins=[0, 500, 1500, np.inf],
-                                                    labels=['Low', 'Medium', 'High'])
+    
+    # Categorize spending
+    monthly_spending['Spending Category'] = pd.cut(
+        monthly_spending['Monthly Expense ($)'],
+        bins=[0, 500, 1500, np.inf],
+        labels=['Low', 'Medium', 'High']
+    )
 
+    # Label encode policy types and categorize ROI
     le = LabelEncoder()
     policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
-
+    
     if 'Expected ROI' in policy_data.columns:
-        policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'], bins=[0, 5, 10, 15, np.inf], labels=['Low', 'Medium', 'High', 'Very High'])
+        policy_data['ROI Category'] = pd.cut(
+            policy_data['Expected ROI'],
+            bins=[0, 5, 10, 15, np.inf],
+            labels=['Low', 'Medium', 'High', 'Very High']
+        )
     else:
         st.error("Column 'Expected ROI' is missing from policy data.")
         return None, None, None
@@ -56,7 +79,13 @@ monthly_spending, policy_data, le = preprocess_data(spending_data, policy_data)
 
 # Train Models and Evaluate Efficiency
 def train_models(monthly_spending, policy_data):
-    # Spending Prediction Model
+    """
+    Train machine learning models for predicting spending categories and policy ROI categories.
+    """
+    if monthly_spending is None or policy_data is None:
+        return None, None, None, None, None
+    
+    # Train spending prediction model
     X_spending = monthly_spending[['Month']]
     y_spending = monthly_spending['Spending Category']
     X_train_s, X_test_s, y_train_s, y_test_s = train_test_split(X_spending, y_spending, test_size=0.2, random_state=42)
@@ -64,7 +93,7 @@ def train_models(monthly_spending, policy_data):
     model_spending.fit(X_train_s, y_train_s)
     acc_spending = accuracy_score(y_test_s, model_spending.predict(X_test_s))
 
-    # Policy Prediction Model
+    # Train policy prediction model
     X_policy = policy_data[['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']]
     X_policy = pd.get_dummies(X_policy, drop_first=True)
     y_policy = policy_data['ROI Category']
@@ -73,6 +102,7 @@ def train_models(monthly_spending, policy_data):
     model_policy.fit(X_train_p, y_train_p)
     acc_policy = accuracy_score(y_test_p, model_policy.predict(X_test_p))
 
+    # Return model and evaluation metrics
     efficiency_metrics = {
         "Spending Prediction Accuracy": acc_spending * 100,
         "Policy Prediction Accuracy": acc_policy * 100,
@@ -84,6 +114,9 @@ model_spending, model_policy, efficiency_metrics, X_test_p, y_test_p = train_mod
 
 # Visualization Functions
 def visualize_monthly_spending_trend(monthly_spending):
+    """
+    Visualize the trend of monthly spending over time.
+    """
     if not monthly_spending.empty:
         monthly_spending['Readable Month'] = pd.to_datetime(monthly_spending['Month'].astype(str) + "01", format='%Y%m%d')
         plt.figure(figsize=(12, 6))
@@ -94,20 +127,17 @@ def visualize_monthly_spending_trend(monthly_spending):
         plt.ylabel("Monthly Expense ($)", fontsize=14)
         st.pyplot(plt)
         
-        # Simple Explanation
         st.write("""
             **What this graph shows:**
             This graph displays the total spending over time. The x-axis represents the months, 
             and the y-axis shows how much was spent in each month. The color gradient shows changes 
             in spending, with cooler tones representing lower spending and warmer tones showing higher spending. 
-            
-            **Key Takeaways:**
-            - Look for trends in the graph: are expenses rising, falling, or staying constant?
-            - Peaks may indicate months of higher-than-normal expenses, which could be useful to understand 
-              and plan for future spending.
         """)
 
 def visualize_spending_categories(monthly_spending):
+    """
+    Visualize the distribution of spending categories (Low, Medium, High).
+    """
     spending_category_counts = monthly_spending['Spending Category'].value_counts().sort_values()
     plt.figure(figsize=(10, 6))
     sns.barplot(y=spending_category_counts.index, x=spending_category_counts, palette='viridis')
@@ -116,20 +146,17 @@ def visualize_spending_categories(monthly_spending):
     plt.ylabel("Spending Category", fontsize=14)
     st.pyplot(plt)
 
-    # Simple Explanation
     st.write("""
             **What this graph shows:**
             This graph breaks down your monthly expenses into different categories: Low, Medium, and High. 
             Each bar represents how many months fall into each category, indicating the frequency of 
             that spending level. 
-            
-            **Key Takeaways:**
-            - If most of your expenses fall into the 'Medium' category, this suggests that your spending 
-              is generally moderate.
-            - If you want to save, aim to bring down the frequency of 'High' spending months.
     """)
 
 def visualize_roi_bar(policy_data):
+    """
+    Visualize the average expected ROI for different policy categories.
+    """
     plt.figure(figsize=(10, 6))
     avg_roi = policy_data.groupby('ROI Category')['Expected ROI'].mean().reset_index()
     sns.barplot(data=avg_roi, x='ROI Category', y='Expected ROI', palette='Blues')
@@ -138,20 +165,16 @@ def visualize_roi_bar(policy_data):
     plt.ylabel("Average Expected ROI (%)", fontsize=14)
     st.pyplot(plt)
 
-    # Simple Explanation
     st.write("""
             **What this graph shows:**
             This bar chart displays the average expected ROI (Return on Investment) for each ROI category 
-            of the policies. The categories are 'Low', 'Medium', 'High', and 'Very High'. The y-axis shows 
-            the average ROI for each category. 
-
-            **Key Takeaways:**
-            - Higher categories, such as 'High' and 'Very High', indicate policies with better returns 
-              on investment.
-            - If you want a policy with a better ROI, look for options in the 'High' or 'Very High' categories. 
+            of the policies. The categories are 'Low', 'Medium', 'High', and 'Very High'.
     """)
 
 def visualize_policy_comparison(top_policies):
+    """
+    Visualize and compare the top 3 recommended policies.
+    """
     if not top_policies.empty:
         plt.figure(figsize=(10, 6))
         categories = top_policies['Policy Type'].astype(str)
@@ -169,25 +192,23 @@ def visualize_policy_comparison(top_policies):
         plt.legend()
         st.pyplot(plt)
 
-        # Simple Explanation
         st.write("""
             **What this graph shows:**
             This bar chart compares the top 3 policies based on their Expected ROI, Investment Horizon, 
             and Potential Return. Each policy is represented by three bars: one for ROI, one for Horizon, 
             and one for Potential Return.
-
-            **Key Takeaways:**
-            - The higher the ROI, the better the potential return on your investment.
-            - Longer investment horizons generally give more time for returns to accumulate.
-            - The 'Potential Return' is directly linked to your investment and expected ROI.
         """)
 
 # Policy Recommendation
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model, label_encoder):
+    """
+    Recommend the best insurance policy based on user's spending category.
+    """
     user_spending = np.array([[user_investment]])
     predicted_category = spending_model.predict(user_spending)[0]
     st.write(f"Predicted Spending Category: {predicted_category}")
 
+    # Filter policies based on spending category
     if predicted_category == 'Low':
         suitable_policies = policy_data[policy_data['ROI Category'] == 'Low']
     elif predicted_category == 'Medium':
@@ -203,10 +224,8 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         st.subheader("Top 3 Recommended Policies:")
         visualize_policy_comparison(top_policies)
 
-        # Select one best policy and print its details
+        # Display best policy
         best_policy = top_policies.iloc[0]
-
-        # Use inverse_transform to get the policy name from encoded 'Policy Type'
         policy_name = label_encoder.inverse_transform([best_policy['Policy Type']])[0]
 
         st.subheader("Recommended Policy for You:")
@@ -220,6 +239,9 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
 
 # User Input for Investment
 def get_user_input():
+    """
+    Get user input for monthly investment and investment duration.
+    """
     st.header("Enter Your Investment Details")
     with st.form(key='investment_form'):
         monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
@@ -232,9 +254,12 @@ def get_user_input():
 
 # Main Function
 def main():
+    """
+    The main function for running the Streamlit app.
+    """
     user_investment, investment_duration = get_user_input()
     if user_investment and investment_duration:
-        recommend_policy(user_investment, investment_duration, policy_data, model_spending, le)  # Pass the label_encoder `le`
+        recommend_policy(user_investment, investment_duration, policy_data, model_spending, le)
 
         # Visualizations
         visualize_monthly_spending_trend(monthly_spending)
@@ -246,10 +271,11 @@ def main():
         st.write(f"Spending Prediction Accuracy: {efficiency_metrics['Spending Prediction Accuracy']:.2f}%")
         st.write(f"Policy Prediction Accuracy: {efficiency_metrics['Policy Prediction Accuracy']:.2f}%")
 
-        # Parse and display the classification report
+        # Display classification report
         st.write("Classification Report for Policies:")
         report_dict = classification_report(y_test_p, model_policy.predict(X_test_p), output_dict=True)
         report_df = pd.DataFrame(report_dict).transpose()
         st.table(report_df)
 
+# Run the app
 main()
