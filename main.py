@@ -142,14 +142,15 @@ def expense_dashboard():
     # Investment Policy Suggestions Section
     if st.session_state.get("is_profile_set", False):
         with st.expander("Investment Policy Suggestions (ML Models)"):
+
             st.subheader("Investment Suggestions")
-            monthly_investment, investment_duration = get_user_input()
+            monthly_investment, investment_duration = get_user_input()  # Ensure these are the correct function calls.
             if st.button("Analyze Investment", key="analyze_investment"):
                 st.session_state.input_submitted = True
-                recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+                recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)  # Pass correct arguments here.
                 if recommended_policy is not None and suitable_policies is not None:
-                    visualize_policy_comparison(suitable_policies)
-                display_policy_suggestion(monthly_investment, investment_duration)
+                    visualize_policy_comparison(suitable_policies)  # Visualize the top 3 suitable policies
+                display_policy_suggestion(monthly_investment, investment_duration)  # Display the suggestion
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
