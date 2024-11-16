@@ -34,6 +34,7 @@ def preprocess_data(spending_data, policy_data):
                                                     bins=[0, 500, 1500, np.inf],
                                                     labels=['Low', 'Medium', 'High'])
 
+    # Label Encoding for Policy Data
     le = LabelEncoder()
     policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
 
