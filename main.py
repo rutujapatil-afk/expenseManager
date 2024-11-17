@@ -4,7 +4,6 @@ import hashlib
 import os
 from datetime import date
 from models.policy_suggestions import (
-    get_user_input,
     recommend_policy,
     visualize_policy_comparison,
     policy_data,
@@ -118,8 +117,8 @@ def expense_dashboard():
     st.title("Expense Manager Dashboard")
     st.header(f"Welcome, {st.session_state.username}!")
 
-    # Profile Button
-    if st.button("Profile"):
+    # Profile Section
+    if st.button("View Profile"):
         st.subheader("Your Profile")
         st.write(f"**Name**: {st.session_state.name}")
         st.write(f"**Phone Number**: {st.session_state.phone_number}")
@@ -128,37 +127,20 @@ def expense_dashboard():
         st.write(f"**Profession**: {st.session_state.profession}")
         st.write(f"**Investment Goal**: {st.session_state.investment_goal}")
 
-        # Logout Button
         if st.button("Logout"):
             st.session_state.clear()
 
-    # Expense Management Section
-    with st.expander("Expense Management"):
-        st.subheader("Add an Expense")
-        amount = st.number_input("Amount", min_value=0.0, step=0.01)
-        category = st.selectbox("Category", ["Food", "Transport", "Shopping", "Entertainment", "Health", "Others"])
-        expense_date = st.date_input("Date", value=date.today())
-        description = st.text_input("Enter Description", "") if category == "Others" else ""
+    # Policy Suggestions Section
+    with st.expander("Investment Policy Suggestions"):
+        st.subheader("Enter Investment Details")
 
-        if st.button("Add Expense", key="add_expense"):
-            expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
-            expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
-            expenses = pd.concat([expenses, expense_data], ignore_index=True)
-            expenses.to_csv("data/expenses.csv", index=False)
-            st.success(f"Expense of {amount} in category {category} added.")
-            user_account.debit(amount, description=description if description else category)
+        # User input for policy suggestions
+        monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=1.0, step=1.0)
+        investment_duration = st.number_input("Enter your investment duration (in months):", min_value=1, step=1)
 
-        st.subheader("Your Expenses")
-        expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
-        st.dataframe(expenses)
-
-    # Investment Policy Suggestions Section
-    if st.session_state.get("is_profile_set", False):
-        with st.expander("Investment Policy Suggestions (ML Models)"):
-            st.subheader("Investment Suggestions")
-            monthly_investment, investment_duration = get_user_input()
+        if st.button("Submit Investment"):
             if monthly_investment <= 0 or investment_duration <= 0:
-                st.error("Please enter valid positive values for both monthly investment and investment duration.")
+                st.error("Please enter valid positive values.")
             else:
                 with st.spinner("Analyzing your investment options..."):
                     try:
@@ -169,56 +151,41 @@ def expense_dashboard():
                         else:
                             st.warning("No suitable policies found for the entered investment details.")
                     except Exception as e:
-                        st.error(f"An error occurred during analysis: {e}")
+                        st.error(f"An error occurred: {e}")
 
-    # SMS Classification Section
-    with st.expander("SMS Classification"):
-        st.subheader("SMS Classification")
-        message = st.text_area("Paste your bank message here", key="sms_input_unique")
-        if st.button("Analyze SMS", key="analyze_sms_button"):
-            label = classify_message(message)
-            if label == 'spam':
-                st.write("This message appears to be spam.")
+# Main Application
+def main():
+    if "username" not in st.session_state:
+        st.session_state.username = None
+
+    st.set_page_config(page_title="Expense Manager", page_icon="💰")
+
+    if st.session_state.username is None:
+        st.title("Login to Expense Manager")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+
+        if st.button("Login"):
+            if authenticate(username, password):
+                st.session_state.username = username
+                st.session_state.is_profile_set = False  # Reset profile setup state
+                st.success("Login successful!")
             else:
-                st.write("Non-spam message detected.")
-                transaction_type, amount = extract_transaction_details(message)
-                if transaction_type and amount > 0:
-                    st.write(f"Transaction detected: {transaction_type.capitalize()} of INR {amount:.2f}")
-                    if transaction_type == 'debit':
-                        user_account.debit(amount)
-                        st.success("Transaction debited and balance updated!")
-                    elif transaction_type == 'credit':
-                        user_account.credit(amount)
-                        st.success("Transaction credited and balance updated!")
+                st.error("Invalid credentials.")
 
-    # Bill Splitting Section
-    with st.expander("Bill Splitting"):
-        st.subheader("Create a Group")
+        if st.button("Register"):
+            username = st.text_input("Create Username")
+            password = st.text_input("Create Password", type="password")
 
-        registered_users = load_users()["username"].values.tolist()
-        if "current_group_members" not in st.session_state:
-            st.session_state.current_group_members = []
-
-        group_name = st.text_input("Enter Group Name")
-        new_member = st.text_input("Enter Username of Group Member")
-
-        if st.button("Add Member"):
-            if new_member in registered_users and new_member not in st.session_state.current_group_members:
-                st.session_state.current_group_members.append(new_member)
-                st.success(f"Added member: {new_member}")
-            elif new_member in st.session_state.current_group_members:
-                st.warning(f"{new_member} is already in the group!")
+            if register_user(username, password):
+                st.success("Registration successful! Please login.")
             else:
-                st.error("User does not exist.")
+                st.error("User already exists.")
 
-        st.write(f"Current group members: {st.session_state.current_group_members}")
+    elif not st.session_state.get("is_profile_set", False):
+        setup_profile()
+    else:
+        expense_dashboard()
 
-        st.subheader("Split Expenses")
-        total_bill = st.number_input("Enter Total Bill Amount", min_value=0.0, step=0.01)
-        if st.button("Split Bill"):
-            if st.session_state.current_group_members:
-                individual_share = total_bill / len(st.session_state.current_group_members)
-                st.write(f"Each member pays: INR {individual_share:.2f}")
-            else:
-                st.warning("No group members added to split the bill.")
-
+if __name__ == "__main__":
+    main()
