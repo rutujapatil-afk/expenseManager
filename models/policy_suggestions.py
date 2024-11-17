@@ -200,6 +200,16 @@ def get_user_input():
 
     return policy_category, investment_horizon, policy_type
 
+def recommend_policy(policy_category, investment_horizon, policy_type):
+    """
+    Recommends a policy based on user input.
+    """
+    filtered_policies = policy_data[(policy_data['ROI Category'] == policy_category) & 
+                                    (policy_data['Investment Horizon'] <= investment_horizon) &
+                                    (policy_data['Policy Type'] == le.transform([policy_type])[0])]
+    top_policy = filtered_policies.nlargest(1, 'Expected ROI')
+    return top_policy
+
 # Streamlit User Interface
 def main():
     st.title("Policy Recommendations and Spending Analysis")
@@ -213,9 +223,7 @@ def main():
     visualize_roi_bar(policy_data)
 
     # Show top policies based on selected category and horizon
-    filtered_policies = policy_data[(policy_data['ROI Category'] == policy_category) & 
-                                    (policy_data['Investment Horizon'] <= investment_horizon)]
-    top_policies = filtered_policies.nlargest(3, 'Expected ROI')
+    top_policies = recommend_policy(policy_category, investment_horizon, policy_type)
     visualize_policy_comparison(top_policies)
 
     # Add the Model Efficiency button
