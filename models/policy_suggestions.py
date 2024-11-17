@@ -217,8 +217,12 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         st.write(f"**Investment Horizon:** {best_policy['Investment Horizon']:.1f} years")
         st.write(f"**Minimum Investment:** ${best_policy['Minimum Investment']:.2f}")
         st.write(f"**Potential Return:** ${best_policy['Potential Return ($)']:.2f}")
+
+        # Explicitly return both values
+        return best_policy, suitable_policies
     else:
         st.write("No suitable policies found for your spending category.")
+        return None, None
 
 # User Input for Investment
 def get_user_input():
