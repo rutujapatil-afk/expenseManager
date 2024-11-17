@@ -8,6 +8,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 
+st.set_page_config(page_title="Investment Dashboard", layout="wide")
+
 # Load Datasets
 @st.cache_data
 def load_data():
