@@ -77,14 +77,14 @@ def train_models(monthly_spending, policy_data):
 model_spending, model_policy, acc_spending, acc_policy = train_models(monthly_spending, policy_data)
 
 # User Input for investment
-def get_user_input():
+def get_user_input(form_key="investment_form"):
     """
     Get the user input for monthly investment and investment duration.
     """
     st.header("Enter Your Investment Details")
 
-    # Creating a form to input investment amount and duration
-    with st.form(key='investment_form'):
+    # Creating a form to input investment amount and duration with dynamic keys
+    with st.form(key=form_key):
         monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
         investment_duration = st.number_input("Enter your investment duration (in months):", min_value=1, max_value=600, value=12)
 
@@ -165,14 +165,14 @@ def visualize_policy_comparison(suitable_policies):
     else:
         st.write("No suitable policies to visualize.")
 
-def display_policy_suggestion(monthly_investment, investment_duration):
+def display_policy_suggestion():
     """
     Display the policy suggestion based on the user input
     """
     st.title("Investment Policy Suggestion")
 
     # Get user input
-    monthly_investment, investment_duration = get_user_input()
+    monthly_investment, investment_duration = get_user_input(form_key="investment_form_unique")
 
     # Wait until the input is submitted
     if st.session_state.get("input_submitted", False):
