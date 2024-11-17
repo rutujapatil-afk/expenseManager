@@ -3,14 +3,7 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-from models.policy_suggestions import (
-    get_user_input,
-    recommend_policy,
-    visualize_policy_comparison,
-    policy_data,
-    model_spending,
-    display_policy_suggestion,
-)
+from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
 
 # User Authentication Functions
