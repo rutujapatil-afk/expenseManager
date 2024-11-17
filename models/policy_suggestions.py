@@ -165,7 +165,7 @@ def visualize_policy_comparison(suitable_policies):
     else:
         st.write("No suitable policies to visualize.")
 
-def display_policy_suggestion():
+def display_policy_suggestion(monthly_investment, investment_duration):
     """
     Display the policy suggestion based on the user input
     """
