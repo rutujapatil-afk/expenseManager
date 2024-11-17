@@ -142,6 +142,7 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
 
 # Visualization
 def visualize_policy_comparison(suitable_policies):
+    # Ensure suitable_policies is not None and not empty
     if suitable_policies is not None and not suitable_policies.empty:
         # Filter to show only the top 5 policies based on Potential Return
         top_policies = suitable_policies.nlargest(5, 'Potential Return ($)')
@@ -172,6 +173,7 @@ def visualize_policy_comparison(suitable_policies):
         st.pyplot(plt)
     else:
         st.write("No suitable policies to visualize.")
+
 
 def display_policy_suggestion():
     """
