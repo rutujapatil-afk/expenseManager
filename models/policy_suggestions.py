@@ -10,6 +10,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report
 
 le = LabelEncoder()
+
 # Load Datasets
 @st.cache_data
 def load_data():
@@ -185,103 +186,18 @@ def visualize_policy_comparison(top_policies):
         """)
 
 # Policy Recommendation
-def recommend_policy(user_investment, investment_duration, policy_data, spending_model, label_encoder):
-    # Check if label_encoder is initialized properly
-    print("LabelEncoder object:", label_encoder)
-
-    # Predict the spending category based on user investment
-    user_spending = np.array([[user_investment]])  # Create an array for prediction
-    predicted_category = spending_model.predict(user_spending)[0]  # Predict category
-    st.write(f"Predicted Spending Category: {predicted_category}")  # Display prediction
-
-    # Filter suitable policies based on predicted spending category
-    if predicted_category == 'Low':
-        suitable_policies = policy_data[policy_data['ROI Category'] == 'Low']
-    elif predicted_category == 'Medium':
-        suitable_policies = policy_data[policy_data['ROI Category'] != 'Very High']
-    else:  # 'High' spending category
-        suitable_policies = policy_data[policy_data['ROI Category'] == 'High']
-
-    # Check if suitable policies exist
-    if not suitable_policies.empty:
-        # Copy suitable policies to avoid changing the original DataFrame
-        suitable_policies = suitable_policies.copy()
-
-        # Calculate potential return based on user investment and duration
-        suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
-
-        # Sort the policies by the highest potential return
-        top_policies = suitable_policies.nlargest(3, 'Potential Return ($)')
-
-        # Display top 3 recommended policies
-        st.subheader("Top 3 Recommended Policies:")
-        visualize_policy_comparison(top_policies)  # Assuming visualize_policy_comparison is a function you defined to display the comparison
-
-        # Select the best policy from the top 3
-        best_policy = top_policies.iloc[0]
-
-        # Handle unseen labels gracefully
-        try:
-            # Use inverse_transform to get the original policy name from encoded 'Policy Type'
-            policy_name = label_encoder.inverse_transform([best_policy['Policy Type']])[0]
-        except ValueError as e:
-            # Handle unseen labels, e.g., fallback to a default name or log the issue
-            st.error(f"Error in policy recommendation: {str(e)}. Using 'Unknown Policy' as fallback.")
-            policy_name = "Unknown Policy"
-
-        # Display the recommended policy details
-        st.subheader("Recommended Policy for You:")
-        st.write(f"**Policy Type:** {policy_name}")
-        st.write(f"**Expected ROI:** {best_policy['Expected ROI']:.2f}%")
-        st.write(f"**Investment Horizon:** {best_policy['Investment Horizon']:.1f} years")
-        st.write(f"**Minimum Investment:** ${best_policy['Minimum Investment']:.2f}")
-        st.write(f"**Potential Return:** ${best_policy['Potential Return ($)']:.2f}")
-
-        # Return both the best policy and the list of suitable policies
-        return best_policy, suitable_policies
+def recommend_policy(user_investment, investment_duration, top_policies):
+    if user_investment > 0:
+        recommended_policy = top_policies.iloc[0]
+        st.write(f"""
+            **Recommended Policy:**
+            Based on your investment amount of ${user_investment} and the desired duration of {investment_duration} years, 
+            the policy '{recommended_policy['Policy Type']}' is the most suitable.
+            
+            **Investment Details:**
+            - **Expected ROI:** {recommended_policy['Expected ROI']}%
+            - **Investment Horizon:** {recommended_policy['Investment Horizon']} years
+            - **Potential Return:** ${recommended_policy['Potential Return ($)']}
+        """)
     else:
-        st.write("No suitable policies found for your spending category.")
-        return None, None
-    
-# User Input for Investment
-def get_user_input():
-    st.header("Enter Your Investment Details")
-    with st.form(key='investment_form'):
-        monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
-        investment_duration = st.number_input("Enter your investment duration (in months):", min_value=1, max_value=600, value=12)
-        submit_button = st.form_submit_button(label='Submit Investment')
-        if submit_button:
-            st.session_state['monthly_investment'] = monthly_investment
-            st.session_state['investment_duration'] = investment_duration
-    
-    # Debug: Print type of user_investment
-    print("user_investment type:", type(monthly_investment))  # Debugging type
-    
-    if 'monthly_investment' in st.session_state and 'investment_duration' in st.session_state:
-        return st.session_state['monthly_investment'], st.session_state['investment_duration']
-    else:
-        st.warning("Please submit your investment details first.")
-        return None, None
-
-
-# Main Function
-def main():
-    user_investment, investment_duration = get_user_input()
-    if user_investment and investment_duration:
-        recommend_policy(user_investment, investment_duration, policy_data, model_spending, le)  # Pass the label_encoder `le`
-
-        # Visualizations
-        visualize_monthly_spending_trend(monthly_spending)
-        visualize_spending_categories(monthly_spending)
-        visualize_roi_bar(policy_data)
-
-    if st.button("Show Model Efficiency"):
-        st.subheader("Model Efficiency")
-        st.write(f"Spending Prediction Accuracy: {efficiency_metrics['Spending Prediction Accuracy']:.2f}%")
-        st.write(f"Policy Prediction Accuracy: {efficiency_metrics['Policy Prediction Accuracy']:.2f}%")
-
-        # Parse and display the classification report
-        st.write("Classification Report for Policies:")
-        report_dict = classification_report(y_test_p, model_policy.predict(X_test_p), output_dict=True)
-        report_df = pd.DataFrame(report_dict).transpose()
-        st.table(report_df)
+        st.write("Please enter a valid investment amount.")
