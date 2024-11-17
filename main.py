@@ -5,7 +5,6 @@ import os
 from datetime import date
 from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
-from sklearn.preprocessing import LabelEncoder
 
 # User Authentication Functions
 def hash_password(password):
@@ -145,12 +144,9 @@ def expense_dashboard():
         with st.expander("Investment Policy Suggestions (ML Models)"):
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
-            le = LabelEncoder()  # Assuming label encoding is required for your policy data
-            le.fit(policy_data['category'])  # Adjust this depending on your data structure
-            
             if st.button("Analyze Investment", key="analyze_investment"):
                 st.session_state.input_submitted = True
-                recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending, le)
+                recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
                 if recommended_policy is not None and suitable_policies is not None:
                     visualize_policy_comparison(suitable_policies)
                 display_policy_suggestion(monthly_investment, investment_duration)
@@ -202,9 +198,6 @@ def expense_dashboard():
 
         if st.button("Create Group"):
             if group_name and st.session_state.current_group_members:
-                if "groups" not in st.session_state:
-                    st.session_state.groups = {}
-
                 st.session_state.groups[group_name] = {
                     "members": st.session_state.current_group_members,
                     "transactions": [],
