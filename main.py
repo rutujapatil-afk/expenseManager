@@ -9,7 +9,7 @@ from sklearn.preprocessing import LabelEncoder
 
 # Initialize LabelEncoder for investment goal categories
 le = LabelEncoder()
-le.fit(["Wealth Growth", "Retirement", "Education", "Emergency Fund"])  # Example categories
+le.fit(["Wealth Growth", "Retirement", "Education", "Emergency Fund","Other Policy Types"])  # Example categories
 
 # User Authentication Functions
 def hash_password(password):

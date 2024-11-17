@@ -220,8 +220,14 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         # Select the best policy from the top 3
         best_policy = top_policies.iloc[0]
 
-        # Use inverse_transform to get the original policy name from encoded 'Policy Type'
-        policy_name = label_encoder.inverse_transform([best_policy['Policy Type']])[0]
+        # Handle unseen labels gracefully
+        try:
+            # Use inverse_transform to get the original policy name from encoded 'Policy Type'
+            policy_name = label_encoder.inverse_transform([best_policy['Policy Type']])[0]
+        except ValueError as e:
+            # Handle unseen labels, e.g., fallback to a default name or log the issue
+            st.error(f"Error in policy recommendation: {str(e)}. Using 'Unknown Policy' as fallback.")
+            policy_name = "Unknown Policy"
 
         # Display the recommended policy details
         st.subheader("Recommended Policy for You:")
@@ -236,6 +242,7 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
     else:
         st.write("No suitable policies found for your spending category.")
         return None, None
+    
 # User Input for Investment
 def get_user_input():
     st.header("Enter Your Investment Details")
