@@ -29,22 +29,28 @@ def preprocess_data(spending_data, policy_data):
     monthly_spending['Month'] = monthly_spending['Month'].dt.to_timestamp().dt.year * 100 + monthly_spending['Month'].dt.month
 
     # Categorize monthly spending
-    monthly_spending['Spending Category'] = pd.cut(monthly_spending['Monthly Expense ($)'],
-                                                    bins=[0, 500, 1500, np.inf],
-                                                    labels=['Low', 'Medium', 'High'])
+    monthly_spending['Spending Category'] = pd.cut(
+        monthly_spending['Monthly Expense ($)'],
+        bins=[0, 500, 1500, np.inf],
+        labels=['Low', 'Medium', 'High']
+    )
 
     # Encoding policy types
     le = LabelEncoder()
     policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
 
-    # Check if 'Expected ROI' column exists and use it for categorization
+    # Check for 'Expected ROI' column
     if 'Expected ROI' in policy_data.columns:
-        policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'],bins=[0, 5, 10, 15, np.inf],labels=['Low', 'Medium', 'High', 'Very High'])
+        policy_data['ROI Category'] = pd.cut(
+            policy_data['Expected ROI'],
+            bins=[0, 5, 10, 15, np.inf],
+            labels=['Low', 'Medium', 'High', 'Very High']
+        )
     else:
         st.error("Column 'Expected ROI' is missing from policy data.")
         return None, None
 
-    # Check for required columns and adjust if needed
+    # Check for required columns
     required_columns = ['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']
     missing_columns = [col for col in required_columns if col not in policy_data.columns]
     if missing_columns:
@@ -55,8 +61,9 @@ def preprocess_data(spending_data, policy_data):
 
 monthly_spending, policy_data = preprocess_data(spending_data, policy_data)
 
-# Train the models
+# Train Models
 def train_models(monthly_spending, policy_data):
+    # Spending Model
     X_spending = monthly_spending[['Month']]
     y_spending = monthly_spending['Spending Category']
     X_train_s, X_test_s, y_train_s, y_test_s = train_test_split(X_spending, y_spending, test_size=0.2, random_state=42)
@@ -64,6 +71,7 @@ def train_models(monthly_spending, policy_data):
     model_spending.fit(X_train_s, y_train_s)
     acc_spending = accuracy_score(y_test_s, model_spending.predict(X_test_s))
 
+    # Policy Model
     X_policy = policy_data[['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']]
     X_policy = pd.get_dummies(X_policy, drop_first=True)
     y_policy = policy_data['ROI Category']
@@ -76,37 +84,31 @@ def train_models(monthly_spending, policy_data):
 
 model_spending, model_policy, acc_spending, acc_policy = train_models(monthly_spending, policy_data)
 
-# User Input for investment
+# User Input
 def get_user_input():
     """
-    Get the user input for monthly investment and investment duration.
+    Collect user investment details.
     """
     st.header("Enter Your Investment Details")
-
-    # Creating a form to input investment amount and duration
     with st.form(key='investment_form'):
         monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
         investment_duration = st.number_input("Enter your investment duration (in months):", min_value=1, max_value=600, value=12)
+        submit_button = st.form_submit_button(label="Submit")
 
-        submit_button = st.form_submit_button(label='Submit Investment')
-        
-        if submit_button:
-            st.session_state.monthly_investment = monthly_investment
-            st.session_state.investment_duration = investment_duration
-            st.session_state.input_submitted = True
-            st.success("Investment details submitted successfully!")
+    if submit_button:
+        st.session_state['monthly_investment'] = monthly_investment
+        st.session_state['investment_duration'] = investment_duration
+        st.session_state['input_submitted'] = True
+        st.success("Investment details submitted successfully!")
+    return st.session_state.get('monthly_investment'), st.session_state.get('investment_duration')
 
-    if 'monthly_investment' not in st.session_state or 'investment_duration' not in st.session_state:
-        return None, None
-
-    return st.session_state.monthly_investment, st.session_state.investment_duration
-
-# Policy Recommendation
-def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
+# Recommend Policy
+def recommend_policy(user_investment, investment_duration, policy_data, model_spending):
     user_spending = np.array([[user_investment]])
-    predicted_category = spending_model.predict(user_spending)[0]
+    predicted_category = model_spending.predict(user_spending)[0]
     st.write(f"Predicted Spending Category: {predicted_category}")
 
+    # Filter policies based on category
     if predicted_category == 'Low':
         suitable_policies = policy_data[policy_data['ROI Category'] == 'Low']
     elif predicted_category == 'Medium':
@@ -115,72 +117,35 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         suitable_policies = policy_data[policy_data['ROI Category'] == 'High']
 
     if not suitable_policies.empty:
-        suitable_policies = suitable_policies.copy()
         suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
         recommended_policy = suitable_policies.loc[suitable_policies['Potential Return ($)'].idxmax()]
-
-        st.write("### Recommended Policy Based on Your Investment:")
+        st.write("### Recommended Policy for You:")
         st.write(recommended_policy[['Policy Name', 'Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment', 'Potential Return ($)']])
-
-        st.write("### Reasons for Selection:")
-        st.write(f"1. *Expected ROI*: The selected policy has an expected ROI of {recommended_policy['Expected ROI']}%, which aligns with your goals.")
-        st.write(f"2. *Potential Return*: Based on your investment of ${user_investment} over {investment_duration} months, the potential return is ${recommended_policy['Potential Return ($)']:.2f}.")
-        st.write(f"3. *Investment Duration*: The maturity period aligns with your investment duration of {investment_duration // 12} years.")
-        
         return recommended_policy, suitable_policies
     else:
         st.write("No suitable policies found for your spending category.")
         return None, None
 
-# Visualization
+# Visualization Functions
 def visualize_policy_comparison(suitable_policies):
     if suitable_policies is not None and not suitable_policies.empty:
-        # Filter to show only the top 5 policies based on Potential Return
-        top_policies = suitable_policies.nlargest(5, 'Potential Return ($)')
+        # Top 3 policies
+        top_policies = suitable_policies.nlargest(3, 'Potential Return ($)')
 
-        # Set up the plot
+        # Bar Chart
         plt.figure(figsize=(10, 6))
-        sns.set_style("whitegrid")
-        
-        # Plot horizontal bar chart for top 5 policies
-        bar_plot = sns.barplot(
-            data=top_policies,
-            y='Policy Name',
-            x='Potential Return ($)',
-            palette='viridis',
-            edgecolor='black'
-        )
-        
-        # Adding labels and customizing the plot
-        plt.title("Top 5 Investment Policies by Potential Return", fontsize=16, weight='bold')
-        plt.xlabel("Potential Return ($)", fontsize=14)
-        plt.ylabel("Policy Name", fontsize=14)
-
-        # Add value labels to each bar
-        for index, value in enumerate(top_policies['Potential Return ($)']):
-            bar_plot.text(value, index, f'${value:,.2f}', color='black', va="center")
-
-        # Display the plot in Streamlit
+        sns.barplot(data=top_policies, y='Policy Name', x='Potential Return ($)', palette='viridis')
+        plt.title("Top 3 Recommended Policies by Potential Return")
+        plt.xlabel("Potential Return ($)")
+        plt.ylabel("Policy Name")
         st.pyplot(plt)
-    else:
-        st.write("No suitable policies to visualize.")
 
-
+# Main App
 def display_policy_suggestion():
-    """
-    Display the policy suggestion based on the user input
-    """
-    st.title("Investment Policy Suggestion")
-
-    # Get user input
+    st.title("Investment Policy Recommendation")
     monthly_investment, investment_duration = get_user_input()
+    if st.session_state.get('input_submitted'):
+        st.button("Analyze")
+        recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
 
-    # Wait until the input is submitted
-    if st.session_state.get("input_submitted", False):
-        if st.button('Analyze'):
-            recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-            
-            if recommended_policy is not None and suitable_policies is not None:
-                visualize_policy_comparison(suitable_policies)
-        else:
-            st.write("Please click 'Analyze' after filling out your investment details.")
+display_policy_suggestion()
