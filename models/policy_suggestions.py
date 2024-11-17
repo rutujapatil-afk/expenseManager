@@ -116,29 +116,31 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
     else:
         suitable_policies = policy_data[policy_data['ROI Category'] == 'High']
 
-    if not suitable_policies.empty:
-        suitable_policies = suitable_policies.copy()
-        suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
-        top_policies = suitable_policies.nlargest(3, 'Potential Return ($)')
-
-        st.subheader("Top 3 Recommended Policies:")
-        st.write(top_policies[['Policy Name', 'Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment', 'Potential Return ($)']])
-
-        # Select one best policy and print its details
-        best_policy = top_policies.iloc[0]
-
-        # Use inverse_transform to get the policy name from encoded 'Policy Type'
-        policy_name = label_encoder.inverse_transform([best_policy['Policy Type']])[0]
-
-        st.subheader("Recommended Policy for You:")
-        st.write(f"**Policy Type:** {policy_name}")
-        st.write(f"**Expected ROI:** {best_policy['Expected ROI']:.2f}%")
-        st.write(f"**Investment Horizon:** {best_policy['Investment Horizon']:.1f} years")
-        st.write(f"**Minimum Investment:** ${best_policy['Minimum Investment']:.2f}")
-        st.write(f"**Potential Return:** ${best_policy['Potential Return ($)']:.2f}")
-    else:
+    if suitable_policies.empty:
         st.write("No suitable policies found for your spending category.")
         return None, None
+
+    suitable_policies = suitable_policies.copy()
+    suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
+    top_policies = suitable_policies.nlargest(3, 'Potential Return ($)')
+
+    st.subheader("Top 3 Recommended Policies:")
+    st.write(top_policies[['Policy Name', 'Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment', 'Potential Return ($)']])
+
+    # Select one best policy and print its details
+    best_policy = top_policies.iloc[0]
+
+    # Use inverse_transform to get the policy name from encoded 'Policy Type'
+    policy_name = label_encoder.inverse_transform([best_policy['Policy Type']])[0]
+
+    st.subheader("Recommended Policy for You:")
+    st.write(f"**Policy Type:** {policy_name}")
+    st.write(f"**Expected ROI:** {best_policy['Expected ROI']:.2f}%")
+    st.write(f"**Investment Horizon:** {best_policy['Investment Horizon']:.1f} years")
+    st.write(f"**Minimum Investment:** ${best_policy['Minimum Investment']:.2f}")
+    st.write(f"**Potential Return:** ${best_policy['Potential Return ($)']:.2f}")
+
+    return best_policy, suitable_policies
 
 # Visualization
 def visualize_policy_comparison(suitable_policies):
