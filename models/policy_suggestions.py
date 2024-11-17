@@ -234,7 +234,12 @@ def get_user_input():
         if submit_button:
             st.session_state['monthly_investment'] = monthly_investment
             st.session_state['investment_duration'] = investment_duration
-    return st.session_state.get('monthly_investment'), st.session_state.get('investment_duration')
+    # Ensure the values are valid before returning
+    if 'monthly_investment' in st.session_state and 'investment_duration' in st.session_state:
+        return st.session_state['monthly_investment'], st.session_state['investment_duration']
+    else:
+        st.warning("Please submit your investment details first.")
+        return None, None
 
 # Main Function
 def main():
