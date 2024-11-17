@@ -146,7 +146,7 @@ def expense_dashboard():
             monthly_investment, investment_duration = get_user_input()
             if st.button("Analyze Investment", key="analyze_investment"):
                 st.session_state.input_submitted = True
-                recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+                recommended_policy, suitable_policies = recommend_policy(user_investment, investment_duration, policy_data, model_spending, le)
                 if recommended_policy is not None and suitable_policies is not None:
                     visualize_policy_comparison(suitable_policies)
                     st.write(f"Recommended Policy: {recommended_policy}")

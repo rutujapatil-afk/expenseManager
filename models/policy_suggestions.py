@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report
 
-
+le = LabelEncoder()
 # Load Datasets
 @st.cache_data
 def load_data():
@@ -186,31 +186,44 @@ def visualize_policy_comparison(top_policies):
 
 # Policy Recommendation
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model, label_encoder):
-    user_spending = np.array([[user_investment]])
-    predicted_category = spending_model.predict(user_spending)[0]
-    st.write(f"Predicted Spending Category: {predicted_category}")
+    # Check if label_encoder is initialized properly
+    print("LabelEncoder object:", label_encoder)
 
+    # Predict the spending category based on user investment
+    user_spending = np.array([[user_investment]])  # Create an array for prediction
+    predicted_category = spending_model.predict(user_spending)[0]  # Predict category
+    st.write(f"Predicted Spending Category: {predicted_category}")  # Display prediction
+
+    # Filter suitable policies based on predicted spending category
     if predicted_category == 'Low':
         suitable_policies = policy_data[policy_data['ROI Category'] == 'Low']
     elif predicted_category == 'Medium':
         suitable_policies = policy_data[policy_data['ROI Category'] != 'Very High']
-    else:
+    else:  # 'High' spending category
         suitable_policies = policy_data[policy_data['ROI Category'] == 'High']
 
+    # Check if suitable policies exist
     if not suitable_policies.empty:
+        # Copy suitable policies to avoid changing the original DataFrame
         suitable_policies = suitable_policies.copy()
+
+        # Calculate potential return based on user investment and duration
         suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
+
+        # Sort the policies by the highest potential return
         top_policies = suitable_policies.nlargest(3, 'Potential Return ($)')
 
+        # Display top 3 recommended policies
         st.subheader("Top 3 Recommended Policies:")
-        visualize_policy_comparison(top_policies)
+        visualize_policy_comparison(top_policies)  # Assuming visualize_policy_comparison is a function you defined to display the comparison
 
-        # Select one best policy and print its details
+        # Select the best policy from the top 3
         best_policy = top_policies.iloc[0]
 
-        # Use inverse_transform to get the policy name from encoded 'Policy Type'
+        # Use inverse_transform to get the original policy name from encoded 'Policy Type'
         policy_name = label_encoder.inverse_transform([best_policy['Policy Type']])[0]
 
+        # Display the recommended policy details
         st.subheader("Recommended Policy for You:")
         st.write(f"**Policy Type:** {policy_name}")
         st.write(f"**Expected ROI:** {best_policy['Expected ROI']:.2f}%")
@@ -218,12 +231,11 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         st.write(f"**Minimum Investment:** ${best_policy['Minimum Investment']:.2f}")
         st.write(f"**Potential Return:** ${best_policy['Potential Return ($)']:.2f}")
 
-        # Explicitly return both values
+        # Return both the best policy and the list of suitable policies
         return best_policy, suitable_policies
     else:
         st.write("No suitable policies found for your spending category.")
         return None, None
-
 # User Input for Investment
 def get_user_input():
     st.header("Enter Your Investment Details")
@@ -234,12 +246,16 @@ def get_user_input():
         if submit_button:
             st.session_state['monthly_investment'] = monthly_investment
             st.session_state['investment_duration'] = investment_duration
-    # Ensure the values are valid before returning
+    
+    # Debug: Print type of user_investment
+    print("user_investment type:", type(monthly_investment))  # Debugging type
+    
     if 'monthly_investment' in st.session_state and 'investment_duration' in st.session_state:
         return st.session_state['monthly_investment'], st.session_state['investment_duration']
     else:
         st.warning("Please submit your investment details first.")
         return None, None
+
 
 # Main Function
 def main():
