@@ -10,7 +10,6 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report
 
 le = LabelEncoder()
-
 # Load Datasets
 @st.cache_data
 def load_data():
@@ -98,7 +97,7 @@ def visualize_monthly_spending_trend(monthly_spending):
         st.pyplot(plt)
         
         # Simple Explanation
-        st.write("""
+        st.write(""" 
             **What this graph shows:**
             This graph displays the total spending over time. The x-axis represents the months, 
             and the y-axis shows how much was spent in each month. The color gradient shows changes 
@@ -120,7 +119,7 @@ def visualize_spending_categories(monthly_spending):
     st.pyplot(plt)
 
     # Simple Explanation
-    st.write("""
+    st.write(""" 
             **What this graph shows:**
             This graph breaks down your monthly expenses into different categories: Low, Medium, and High. 
             Each bar represents how many months fall into each category, indicating the frequency of 
@@ -142,7 +141,7 @@ def visualize_roi_bar(policy_data):
     st.pyplot(plt)
 
     # Simple Explanation
-    st.write("""
+    st.write(""" 
             **What this graph shows:**
             This bar chart displays the average expected ROI (Return on Investment) for each ROI category 
             of the policies. The categories are 'Low', 'Medium', 'High', and 'Very High'. The y-axis shows 
@@ -173,7 +172,7 @@ def visualize_policy_comparison(top_policies):
         st.pyplot(plt)
 
         # Simple Explanation
-        st.write("""
+        st.write(""" 
             **What this graph shows:**
             This bar chart compares the top 3 policies based on their Expected ROI, Investment Horizon, 
             and Potential Return. Each policy is represented by three bars: one for ROI, one for Horizon, 
@@ -185,19 +184,51 @@ def visualize_policy_comparison(top_policies):
             - The 'Potential Return' is directly linked to your investment and expected ROI.
         """)
 
-# Policy Recommendation
-def recommend_policy(user_investment, investment_duration, top_policies):
-    if user_investment > 0:
-        recommended_policy = top_policies.iloc[0]
-        st.write(f"""
-            **Recommended Policy:**
-            Based on your investment amount of ${user_investment} and the desired duration of {investment_duration} years, 
-            the policy '{recommended_policy['Policy Type']}' is the most suitable.
-            
-            **Investment Details:**
-            - **Expected ROI:** {recommended_policy['Expected ROI']}%
-            - **Investment Horizon:** {recommended_policy['Investment Horizon']} years
-            - **Potential Return:** ${recommended_policy['Potential Return ($)']}
-        """)
-    else:
-        st.write("Please enter a valid investment amount.")
+# Streamlit User Interface
+def main():
+    st.title("Policy Recommendations and Spending Analysis")
+    
+    st.sidebar.header("Policy Category")
+    policy_category = st.sidebar.selectbox("Select Policy Category", ["High", "Medium", "Low"])
+
+    st.sidebar.header("Investment Horizon")
+    investment_horizon = st.sidebar.slider("Select Investment Horizon (years)", min_value=1, max_value=30, step=1, value=5)
+
+    st.sidebar.header("Policy Type")
+    policy_type = st.sidebar.selectbox("Select Policy Type", policy_data['Policy Type'].unique())
+
+    # Display visualizations
+    visualize_monthly_spending_trend(monthly_spending)
+    visualize_spending_categories(monthly_spending)
+    visualize_roi_bar(policy_data)
+    
+    # Show top policies based on selected category and horizon
+    filtered_policies = policy_data[(policy_data['ROI Category'] == policy_category) & 
+                                    (policy_data['Investment Horizon'] <= investment_horizon)]
+    top_policies = filtered_policies.nlargest(3, 'Expected ROI')
+    visualize_policy_comparison(top_policies)
+
+    # Add the Model Efficiency button
+    if st.button("Show Model Efficiency"):
+        # Model Efficiency Metrics
+        st.subheader("Model Efficiency")
+
+        # Spending Prediction Accuracy
+        st.write(f"**Spending Prediction Accuracy:** {efficiency_metrics['Spending Prediction Accuracy']:.2f}%")
+
+        # Policy Prediction Accuracy
+        st.write(f"**Policy Prediction Accuracy:** {efficiency_metrics['Policy Prediction Accuracy']:.2f}%")
+
+        # Classification Report for Policies
+        policy_classification_report = classification_report(y_test_p, model_policy.predict(X_test_p), output_dict=True)
+
+        st.write("**Classification Report for Policies:**")
+        # Convert classification report to DataFrame for better display
+        report_df = pd.DataFrame(policy_classification_report).transpose()
+        st.dataframe(report_df)
+
+        # Optional: Display as raw text if desired
+        st.text(classification_report(y_test_p, model_policy.predict(X_test_p)))
+
+if __name__ == "__main__":
+    main()
