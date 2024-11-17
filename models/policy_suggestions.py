@@ -53,6 +53,7 @@ def preprocess_data(spending_data, policy_data):
 
     return monthly_spending, policy_data, le
 
+
 monthly_spending, policy_data, le = preprocess_data(spending_data, policy_data)
 
 # Train the models
@@ -101,14 +102,33 @@ def get_user_input():
     if 'monthly_investment' not in st.session_state or 'investment_duration' not in st.session_state:
         return None, None
 
+    # Validate inputs before proceeding
+    if monthly_investment <= 0 or investment_duration <= 0:
+        st.error("Investment amount and duration must be positive values.")
+        return None, None
+
     return st.session_state.monthly_investment, st.session_state.investment_duration
 
 # Policy Recommendation
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model, label_encoder):
-    user_spending = np.array([[user_investment]])
-    predicted_category = spending_model.predict(user_spending)[0]
-    st.write(f"Predicted Spending Category: {predicted_category}")
+    """
+    Recommend a policy based on the user's investment input, their spending category, and available policy data.
+    """
+    # Ensure the input is not None
+    if user_investment is None or investment_duration is None:
+        st.error("Please provide valid investment details.")
+        return None, None
 
+    # Predict the spending category based on user input
+    try:
+        user_spending = np.array([[user_investment]])
+        predicted_category = spending_model.predict(user_spending)[0]
+        st.write(f"Predicted Spending Category: {predicted_category}")
+    except Exception as e:
+        st.error(f"Error predicting spending category: {e}")
+        return None, None
+
+    # Filter policies based on the predicted spending category
     if predicted_category == 'Low':
         suitable_policies = policy_data[policy_data['ROI Category'] == 'Low']
     elif predicted_category == 'Medium':
@@ -120,6 +140,7 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         st.write("No suitable policies found for your spending category.")
         return None, None
 
+    # Calculate potential return for the suitable policies
     suitable_policies = suitable_policies.copy()
     suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
     top_policies = suitable_policies.nlargest(3, 'Potential Return ($)')
@@ -127,7 +148,7 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
     st.subheader("Top 3 Recommended Policies:")
     st.write(top_policies[['Policy Name', 'Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment', 'Potential Return ($)']])
 
-    # Select one best policy and print its details
+    # Select the best policy
     best_policy = top_policies.iloc[0]
 
     # Use inverse_transform to get the policy name from encoded 'Policy Type'
