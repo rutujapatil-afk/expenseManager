@@ -104,8 +104,7 @@ def visualize_monthly_spending_trend(monthly_spending):
         plt.xlabel("Month", fontsize=14)
         plt.ylabel("Monthly Expense ($)", fontsize=14)
         st.pyplot(plt)
-        
-        # Simple Explanation
+
         st.write(""" 
             **What this graph shows:**
             This graph displays the total spending over time. The x-axis represents the months, 
@@ -127,7 +126,6 @@ def visualize_spending_categories(monthly_spending):
     plt.ylabel("Spending Category", fontsize=14)
     st.pyplot(plt)
 
-    # Simple Explanation
     st.write(""" 
             **What this graph shows:**
             This graph breaks down your monthly expenses into different categories: Low, Medium, and High. 
@@ -149,7 +147,6 @@ def visualize_roi_bar(policy_data):
     plt.ylabel("Average Expected ROI (%)", fontsize=14)
     st.pyplot(plt)
 
-    # Simple Explanation
     st.write(""" 
             **What this graph shows:**
             This bar chart displays the average expected ROI (Return on Investment) for each ROI category 
@@ -180,7 +177,6 @@ def visualize_policy_comparison(top_policies):
         plt.legend()
         st.pyplot(plt)
 
-        # Simple Explanation
         st.write(""" 
             **What this graph shows:**
             This bar chart compares the top 3 policies based on their Expected ROI, Investment Horizon, 
@@ -188,29 +184,34 @@ def visualize_policy_comparison(top_policies):
             and one for Potential Return.
 
             **Key Takeaways:**
-            - The higher the ROI, the better the potential return on your investment.
-            - Longer investment horizons generally give more time for returns to accumulate.
-            - The 'Potential Return' is directly linked to your investment and expected ROI.
+            - Policies with high ROI and low investment horizons are ideal for short-term goals.
+            - Policies with high potential returns are attractive for long-term investments.
         """)
+
+# Get User Input Function
+def get_user_input():
+    """
+    Collects and returns user input from the Streamlit sidebar.
+    """
+    st.sidebar.header("User Input")
+    policy_category = st.sidebar.selectbox("Select Policy Category", ["High", "Medium", "Low"])
+    investment_horizon = st.sidebar.slider("Select Investment Horizon (years)", min_value=1, max_value=30, step=1, value=5)
+    policy_type = st.sidebar.selectbox("Select Policy Type", policy_data['Policy Type'].unique())
+
+    return policy_category, investment_horizon, policy_type
 
 # Streamlit User Interface
 def main():
     st.title("Policy Recommendations and Spending Analysis")
-    
-    st.sidebar.header("Policy Category")
-    policy_category = st.sidebar.selectbox("Select Policy Category", ["High", "Medium", "Low"])
 
-    st.sidebar.header("Investment Horizon")
-    investment_horizon = st.sidebar.slider("Select Investment Horizon (years)", min_value=1, max_value=30, step=1, value=5)
-
-    st.sidebar.header("Policy Type")
-    policy_type = st.sidebar.selectbox("Select Policy Type", policy_data['Policy Type'].unique())
+    # Get user inputs
+    policy_category, investment_horizon, policy_type = get_user_input()
 
     # Display visualizations
     visualize_monthly_spending_trend(monthly_spending)
     visualize_spending_categories(monthly_spending)
     visualize_roi_bar(policy_data)
-    
+
     # Show top policies based on selected category and horizon
     filtered_policies = policy_data[(policy_data['ROI Category'] == policy_category) & 
                                     (policy_data['Investment Horizon'] <= investment_horizon)]
