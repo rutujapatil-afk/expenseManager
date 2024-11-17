@@ -3,13 +3,8 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, efficiency_metrics
+from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
-from sklearn.preprocessing import LabelEncoder
-
-# Initialize LabelEncoder for investment goal categories
-le = LabelEncoder()
-le.fit(["Wealth Growth", "Retirement", "Education", "Emergency Fund","Other Policy Types"])  # Example categories
 
 # User Authentication Functions
 def hash_password(password):
@@ -151,12 +146,10 @@ def expense_dashboard():
             monthly_investment, investment_duration = get_user_input()
             if st.button("Analyze Investment", key="analyze_investment"):
                 st.session_state.input_submitted = True
-                user_investment = monthly_investment  # Capture the monthly investment value
-                recommended_policy, suitable_policies = recommend_policy(user_investment, investment_duration, policy_data, model_spending, le)
+                recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
                 if recommended_policy is not None and suitable_policies is not None:
                     visualize_policy_comparison(suitable_policies)
-                    st.write(f"Recommended Policy: {recommended_policy}")
-                st.session_state.input_submitted = False
+                display_policy_suggestion(monthly_investment, investment_duration)
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
@@ -205,8 +198,6 @@ def expense_dashboard():
 
         if st.button("Create Group"):
             if group_name and st.session_state.current_group_members:
-                if "groups" not in st.session_state:
-                    st.session_state.groups = {}
                 st.session_state.groups[group_name] = {
                     "members": st.session_state.current_group_members,
                     "transactions": [],
