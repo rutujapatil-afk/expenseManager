@@ -9,8 +9,10 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report
 
+# LabelEncoder for policy data
 le = LabelEncoder()
-# Load Datasets
+
+# Load Datasets with @st.cache_data for better performance
 @st.cache_data
 def load_data():
     """
@@ -26,18 +28,26 @@ policy_data, spending_data = load_data()
 def preprocess_data(spending_data, policy_data):
     spending_data.columns = spending_data.columns.str.strip()
     spending_data['Date'] = pd.to_datetime(spending_data['Date'])
+
+    # Group spending data by month and calculate total expense
     monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
     monthly_spending.rename(columns={'Amount': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
 
     monthly_spending['Month'] = monthly_spending['Month'].dt.year * 100 + monthly_spending['Month'].dt.month
     monthly_spending['Monthly Expense ($)'] = pd.to_numeric(monthly_spending['Monthly Expense ($)'], errors='coerce')
     monthly_spending = monthly_spending.dropna(subset=['Monthly Expense ($)'])
+
+    # Categorize spending into low, medium, high categories
     monthly_spending['Spending Category'] = pd.cut(monthly_spending['Monthly Expense ($)'],
                                                     bins=[0, 500, 1500, np.inf],
                                                     labels=['Low', 'Medium', 'High'])
 
-    le = LabelEncoder()
-    policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
+    # Preprocess policy data
+    if 'Policy Type' in policy_data.columns:
+        policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
+    else:
+        st.error("Column 'Policy Type' is missing from policy data.")
+        return None, None, None
 
     if 'Expected ROI' in policy_data.columns:
         policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'], bins=[0, 5, 10, 15, np.inf], labels=['Low', 'Medium', 'High', 'Very High'])
@@ -54,7 +64,6 @@ def preprocess_data(spending_data, policy_data):
     return monthly_spending, policy_data, le
 
 monthly_spending, policy_data, le = preprocess_data(spending_data, policy_data)
-
 
 # Train Models and Evaluate Efficiency
 def train_models(monthly_spending, policy_data):
