@@ -3,7 +3,14 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
+from models.policy_suggestions import (
+    get_user_input,
+    recommend_policy,
+    visualize_policy_comparison,
+    policy_data,
+    model_spending,
+    display_policy_suggestion,
+)
 from models.spam_classifier import classify_message, extract_transaction_details
 
 # User Authentication Functions
@@ -52,7 +59,7 @@ def register_user(username, password):
 # Profile Setup Function
 def setup_profile():
     st.subheader("Complete Profile Setup")
-    
+
     # User input fields
     name = st.text_input("Enter your name")
     phone_number = st.text_input("Enter your phone number")
@@ -69,7 +76,7 @@ def setup_profile():
         st.session_state.gender = gender
         st.session_state.profession = profession
         st.session_state.investment_goal = investment_goal
-        
+
         st.success("Profile setup complete! Accessing your dashboard.")
 
 # Dashboard Functionality
@@ -100,6 +107,12 @@ class UserAccount:
 
 # Initialize a user account instance
 user_account = UserAccount()
+
+@st.cache_data
+def load_policy_data():
+    return pd.read_csv("data/policies.csv")
+
+policy_data = load_policy_data()
 
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
@@ -144,12 +157,19 @@ def expense_dashboard():
         with st.expander("Investment Policy Suggestions (ML Models)"):
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
-            if st.button("Analyze Investment", key="analyze_investment"):
-                st.session_state.input_submitted = True
-                recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-                if recommended_policy is not None and suitable_policies is not None:
-                    visualize_policy_comparison(suitable_policies)
-                display_policy_suggestion(monthly_investment, investment_duration)
+            if monthly_investment <= 0 or investment_duration <= 0:
+                st.error("Please enter valid positive values for both monthly investment and investment duration.")
+            else:
+                with st.spinner("Analyzing your investment options..."):
+                    try:
+                        recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+                        if recommended_policy is not None and not suitable_policies.empty:
+                            visualize_policy_comparison(suitable_policies)
+                            display_policy_suggestion(monthly_investment, investment_duration)
+                        else:
+                            st.warning("No suitable policies found for the entered investment details.")
+                    except Exception as e:
+                        st.error(f"An error occurred during analysis: {e}")
 
     # SMS Classification Section
     with st.expander("SMS Classification"):
@@ -174,84 +194,31 @@ def expense_dashboard():
     # Bill Splitting Section
     with st.expander("Bill Splitting"):
         st.subheader("Create a Group")
-        
+
         registered_users = load_users()["username"].values.tolist()
         if "current_group_members" not in st.session_state:
             st.session_state.current_group_members = []
 
         group_name = st.text_input("Enter Group Name")
         new_member = st.text_input("Enter Username of Group Member")
-        
+
         if st.button("Add Member"):
             if new_member in registered_users and new_member not in st.session_state.current_group_members:
                 st.session_state.current_group_members.append(new_member)
                 st.success(f"Added member: {new_member}")
             elif new_member in st.session_state.current_group_members:
-                st.warning(f"'{new_member}' is already added.")
+                st.warning(f"{new_member} is already in the group!")
             else:
-                st.error("Username does not exist.")
-        
-            if len(st.session_state.current_group_members) == 6:
-                st.warning("Maximum group size reached.")
+                st.error("User does not exist.")
 
-        st.write("Current Group Members:", ", ".join(st.session_state.current_group_members))
+        st.write(f"Current group members: {st.session_state.current_group_members}")
 
-        if st.button("Create Group"):
-            if group_name and st.session_state.current_group_members:
-                st.session_state.groups[group_name] = {
-                    "members": st.session_state.current_group_members,
-                    "transactions": [],
-                }
-                st.success(f"Group '{group_name}' created!")
-                st.session_state.current_group_members = []
-
-# Main Flow Logic
-if "username" not in st.session_state:
-    st.session_state.username = ""
-if "is_profile_set" not in st.session_state:
-    st.session_state.is_profile_set = False
-if "input_submitted" not in st.session_state:
-    st.session_state.input_submitted = False
-if "is_signing_up" not in st.session_state:
-    st.session_state.is_signing_up = False
-
-if "username" in st.session_state and st.session_state.username:
-    if not st.session_state.is_profile_set:
-        setup_profile()
-    else:
-        expense_dashboard()
-else:
-    st.header("Welcome to the Expense Manager!")
-    st.subheader("Log in to continue")
-
-    # Login Section
-    username = st.text_input("Enter your username", key="username_login")
-    password = st.text_input("Enter your password", type="password", key="password_login")
-    
-    login_col, new_user_col = st.columns(2)
-
-    with login_col:
-        if st.button("Login", key="login_button"):
-            if authenticate(username, password):
-                st.success(f"Logged in as {username}")
+        st.subheader("Split Expenses")
+        total_bill = st.number_input("Enter Total Bill Amount", min_value=0.0, step=0.01)
+        if st.button("Split Bill"):
+            if st.session_state.current_group_members:
+                individual_share = total_bill / len(st.session_state.current_group_members)
+                st.write(f"Each member pays: INR {individual_share:.2f}")
             else:
-                st.error("Incorrect username or password.")
+                st.warning("No group members added to split the bill.")
 
-    with new_user_col:
-        if st.button("New User", key="new_user_button"):
-            st.session_state.is_signing_up = True
-
-    st.markdown("[Forgotten account?](#)")
-
-    # Signup Section
-    if st.session_state.get("is_signing_up", False):
-        st.subheader("Sign up for a new account")
-        new_username = st.text_input("Enter a username", key="username_signup")
-        new_password = st.text_input("Enter a password", type="password", key="password_signup")
-
-        if st.button("Sign Up", key="signup_button"):
-            if register_user(new_username, new_password):
-                st.success(f"Account created for {new_username}. Please log in.")
-                st.session_state.is_signing_up = False
-            else:
-                st.error("Username already exists.")
