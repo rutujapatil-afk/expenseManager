@@ -240,9 +240,8 @@ def main():
     # Profile Setup
     if username and user_data is None:
         st.subheader("Profile Setup")
-        investment_goal = st.text_input("Enter Your Investment Goal:")
-        investment_duration = st.number_input("Enter Your Investment Duration (years):", min_value=1)
-        if st.button("Save Profile"):
+        investment_goal, investment_duration = get_user_input()
+        if investment_goal and investment_duration:
             user_account = UserAccount(username, investment_goal, investment_duration)
             user_account.save()
             st.success("Profile saved successfully!")

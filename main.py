@@ -3,7 +3,18 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, load_data, preprocess_data, train_models, visualize_monthly_spending_trend, visualize_spending_categories, visualize_roi_bar
+# main.py
+from models.policy_suggestions import (
+    recommend_policy,
+    visualize_policy_comparison,
+    load_data,
+    preprocess_data,
+    train_models,
+    visualize_monthly_spending_trend,
+    visualize_spending_categories,
+    visualize_roi_bar
+)
+
 from models.spam_classifier import classify_message, extract_transaction_details
 
 # Load Data
@@ -91,6 +102,20 @@ def setup_profile():
         st.session_state.investment_goal = investment_goal
         
         st.success("Profile setup complete! Accessing your dashboard.")
+
+# New function to gather user input for investment goal and duration
+def get_user_input():
+    """
+    Gather user input for the investment goal and duration.
+    This function can be used to prompt the user for the necessary details.
+    """
+    # Profile Setup
+    investment_goal = st.text_input("Enter Your Investment Goal:")
+    investment_duration = st.number_input("Enter Your Investment Duration (years):", min_value=1)
+
+    if st.button("Save Profile"):
+        return investment_goal, investment_duration
+    return None, None
 
 # Dashboard Functionality
 class UserAccount:
