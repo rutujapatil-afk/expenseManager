@@ -118,6 +118,7 @@ def expense_dashboard():
         # Logout Button
         if st.button("Logout"):
             st.session_state.clear()
+            st.experimental_rerun()
 
     # Expense Management Section
     with st.expander("Expense Management"):
