@@ -102,6 +102,12 @@ class UserAccount:
 # Initialize a user account instance
 user_account = UserAccount()
 
+import os
+import pandas as pd
+import streamlit as st
+from datetime import date
+from sklearn.metrics import classification_report
+
 def expense_dashboard():
     st.title("Expense Manager Dashboard")
     st.header(f"Welcome, {st.session_state.username}!")
@@ -129,16 +135,24 @@ def expense_dashboard():
         description = st.text_input("Enter Description", "") if category == "Others" else ""
 
         if st.button("Add Expense", key="add_expense"):
-            expense_data = pd.DataFrame({"amount": [amount], "category": [category], "date": [str(expense_date)], "description": [description]})
+            expense_data = pd.DataFrame({
+                "amount": [amount],
+                "category": [category],
+                "date": [str(expense_date)],
+                "description": [description]
+            })
+
             expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
             expenses = pd.concat([expenses, expense_data], ignore_index=True)
             expenses.to_csv("data/expenses.csv", index=False)
             st.success(f"Expense of {amount} in category {category} added.")
-            user_account.debit(amount, description=description if description else category)
 
         st.subheader("Your Expenses")
         expenses = pd.read_csv("data/expenses.csv") if os.path.exists("data/expenses.csv") else pd.DataFrame(columns=["amount", "category", "date", "description"])
         st.dataframe(expenses)
+
+    # Bill Splitting Section
+    manage_group_transactions()
 
     # Investment Policy Suggestions Section
     if st.session_state.get("is_profile_set", False):
@@ -149,7 +163,7 @@ def expense_dashboard():
                 st.session_state.input_submitted = True
                 recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
                 display_policy_suggestion()
-            
+
             if st.button("Show Model Efficiency"):
                 st.subheader("Model Efficiency")
                 st.write(f"Spending Prediction Accuracy: {efficiency_metrics['Spending Prediction Accuracy']:.2f}%")
@@ -160,7 +174,7 @@ def expense_dashboard():
                 report_dict = classification_report(y_test_p, model_policy.predict(X_test_p), output_dict=True)
                 report_df = pd.DataFrame(report_dict).transpose()
                 st.table(report_df)
-    
+
     # SMS Classification Section
     with st.expander("SMS Classification"):
         st.subheader("SMS Classification")
@@ -181,39 +195,156 @@ def expense_dashboard():
                         user_account.credit(amount)
                         st.success("Transaction credited and balance updated!")
 
-    # Bill Splitting Section
-    with st.expander("Bill Splitting"):
-        st.subheader("Create a Group")
-        
-        registered_users = load_users()["username"].values.tolist()
-        if "current_group_members" not in st.session_state:
-            st.session_state.current_group_members = []
+# New Group Management Section
+# Group Management Section
+def manage_group_transactions():
+    # Initialize groups in session state if not present
+    if "groups" not in st.session_state:
+        st.session_state.groups = {}
 
-        group_name = st.text_input("Enter Group Name")
-        new_member = st.text_input("Enter Username of Group Member")
+    # Add a new group
+    with st.expander("Split bill"):
+        st.subheader("Split Bill")
         
+        group_name = st.text_input("Enter Group Name", key="group_name_input")
+        if "new_group_members" not in st.session_state:
+            st.session_state.new_group_members = []
+        
+        # Display existing members for the new group
+        st.write("### Members Added:")
+        if st.session_state.new_group_members:
+            for idx, member in enumerate(st.session_state.new_group_members):
+                st.write(f"{idx + 1}. {member}")
+        else:
+            st.write("No members added yet.")
+
+        # Input for adding a new member
+        new_member = st.text_input("Add a Member", key="new_member_input")
+        
+        # Add member button
         if st.button("Add Member"):
-            if new_member in registered_users and new_member not in st.session_state.current_group_members:
-                st.session_state.current_group_members.append(new_member)
-                st.success(f"Added member: {new_member}")
-            elif new_member in st.session_state.current_group_members:
-                st.warning(f"'{new_member}' is already added.")
+            if new_member:
+                if new_member in st.session_state.new_group_members:
+                    st.warning(f"{new_member} is already in the group.")
+                else:
+                    st.session_state.new_group_members.append(new_member)
+                    st.success(f"Added {new_member} to the group.")
             else:
-                st.error("Username does not exist.")
-        
-            if len(st.session_state.current_group_members) == 6:
-                st.warning("Maximum group size reached.")
+                st.warning("Member name cannot be empty.")
 
-        st.write("Current Group Members:", ", ".join(st.session_state.current_group_members))
-
+        # Create Group button
         if st.button("Create Group"):
-            if group_name and st.session_state.current_group_members:
+            if not group_name:
+                st.warning("Group name is required.")
+            elif group_name in st.session_state.groups:
+                st.warning("A group with this name already exists.")
+            elif not st.session_state.new_group_members:
+                st.warning("At least one member is required to create a group.")
+            else:
                 st.session_state.groups[group_name] = {
-                    "members": st.session_state.current_group_members,
+                    "members": st.session_state.new_group_members.copy(),
                     "transactions": [],
                 }
-                st.success(f"Group '{group_name}' created!")
-                st.session_state.current_group_members = []
+                st.session_state.new_group_members = []
+                st.success(f"Group '{group_name}' created successfully!")
+
+    # Display existing groups and manage their transactions
+    for group_name, group_data in st.session_state.groups.items():
+        with st.expander(f"Group: {group_name}"):
+            st.subheader(f"Group: {group_name}")
+            st.write(f"**Members:** {', '.join(group_data['members'])}")
+
+            # Add Expense to Group
+            st.subheader(f"Add Expense for {group_name}")
+            expense_amount = st.number_input(f"Amount for {group_name}", min_value=0.0, step=0.01, key=f"amount_{group_name}")
+            category = st.text_input(f"Category for {group_name}", key=f"category_{group_name}")
+            expense_date = str(date.today())
+
+            if st.button(f"Add Expense to {group_name}", key=f"add_expense_{group_name}"):
+                n_members = len(group_data["members"])
+                if n_members > 0:
+                    split_amount = expense_amount / n_members
+                    # Record the transaction
+                    group_data["transactions"].append({
+                        "payer": st.session_state.username,
+                        "amount": expense_amount,
+                        "category": category,
+                        "date": expense_date,
+                        "split_amount": split_amount,
+                    })
+                    st.success(f"Expense of INR {expense_amount:.2f} split among {n_members} members.")
+                else:
+                    st.warning(f"No members in group '{group_name}'. Cannot split expense.")
+
+            # Display amount owed by group members
+            if st.button(f"Owed by Members in {group_name}", key=f"owed_{group_name}"):
+                owed_summary = calculate_owed_by_group_members(group_name)
+                st.write("**Amount Owed by Group Members:**")
+                for member, amount in owed_summary.items():
+                    st.write(f"{member}: INR {amount:.2f}")
+
+            # Display debts of the current user
+            if st.button(f"Debts in {group_name}", key=f"debt_{group_name}"):
+                debt_summary = calculate_user_debt(group_name)
+                st.write("**Amount I Owe to Group Members:**")
+                for member, amount in debt_summary.items():
+                    st.write(f"{member}: INR {amount:.2f}")
+
+
+# Helper functions for group debt and owed calculations
+def calculate_owed_by_group_members(group_name):
+    """Calculate how much each group member owes the current user."""
+    group_data = st.session_state.groups[group_name]
+    user = st.session_state.username
+    owed = {member: 0 for member in group_data["members"] if member != user}
+
+    for transaction in group_data["transactions"]:
+        if transaction["payer"] == user:
+            for member in owed:
+                owed[member] += transaction["split_amount"]
+        elif transaction["payer"] in owed:
+            owed[transaction["payer"]] -= transaction["split_amount"]
+
+    return {member: amount for member, amount in owed.items() if amount > 0}
+
+def calculate_user_debt(group_name):
+    """Calculate how much the current user owes to other group members."""
+    group_data = st.session_state.groups[group_name]
+    user = st.session_state.username
+    debt = {member: 0 for member in group_data["members"] if member != user}
+
+    for transaction in group_data["transactions"]:
+        if transaction["payer"] != user and user in group_data["members"]:
+            debt[transaction["payer"]] += transaction["split_amount"]
+
+    return {member: amount for member, amount in debt.items() if amount > 0}
+
+# Helper functions
+def calculate_owed_by_group_members(group_name):
+    group_data = st.session_state.groups[group_name]
+    user = st.session_state.username
+    owed = {member: 0 for member in group_data["members"] if member != user}
+
+    for transaction in group_data["transactions"]:
+        if transaction["payer"] == user:
+            for member in owed:
+                owed[member] += transaction["split_amount"]
+        elif transaction["payer"] in owed:
+            owed[transaction["payer"]] -= transaction["split_amount"]
+
+    return {member: amount for member, amount in owed.items() if amount > 0}
+
+
+def calculate_user_debt(group_name):
+    group_data = st.session_state.groups[group_name]
+    user = st.session_state.username
+    debt = {member: 0 for member in group_data["members"] if member != user}
+
+    for transaction in group_data["transactions"]:
+        if transaction["payer"] != user and user in group_data["members"]:
+            debt[transaction["payer"]] += transaction["split_amount"]
+
+    return {member: amount for member, amount in debt.items() if amount > 0}
 
 # Main Flow Logic
 if "username" not in st.session_state:
@@ -224,9 +355,6 @@ if "input_submitted" not in st.session_state:
     st.session_state.input_submitted = False
 if "is_signing_up" not in st.session_state:
     st.session_state.is_signing_up = False
-if "groups" not in st.session_state:
-    st.session_state.groups = {}
-
 
 if "username" in st.session_state and st.session_state.username:
     if not st.session_state.is_profile_set:
