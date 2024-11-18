@@ -182,3 +182,10 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         st.write(f"**Potential Return:** ${best_policy['Potential Return ($)']:.2f}")
     else:
         st.write("No suitable policies found for your spending category.")
+
+# Get User Input for Recommendation
+def get_user_input():
+    st.subheader("Enter Your Investment Details")
+    user_investment = st.number_input("Investment Amount ($)", min_value=1000, max_value=100000, step=1000)
+    investment_duration = st.number_input("Investment Duration (years)", min_value=1, max_value=30, step=1)
+    return user_investment, investment_duration
