@@ -117,10 +117,13 @@ def expense_dashboard():
 
         # Logout Button
         if st.button("Logout"):
+            # Clear session state variables
             st.session_state.username = ""
+            st.session_state.is_profile_set = False
             st.session_state.input_submitted = False
             st.session_state.is_signing_up = False
-            st.session_state.clear()
+            
+            # Force a rerun to show the login page again
             st.experimental_rerun()
 
     # Expense Management Section
@@ -198,64 +201,46 @@ def expense_dashboard():
             if len(st.session_state.current_group_members) == 6:
                 st.warning("Maximum group size reached.")
 
-        st.write("Current Group Members:", ", ".join(st.session_state.current_group_members))
+        st.write("Group Members:", st.session_state.current_group_members)
 
-        if st.button("Create Group"):
-            if group_name and st.session_state.current_group_members:
-                st.session_state.groups[group_name] = {
-                    "members": st.session_state.current_group_members,
-                    "transactions": [],
-                }
-                st.success(f"Group '{group_name}' created!")
-                st.session_state.current_group_members = []
+# Login Page
+def login_page():
+    st.title("Login Page")
+    
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
-# Main Flow Logic
+    if st.button("Login"):
+        if authenticate(username, password):
+            st.session_state.username = username
+            st.session_state.is_profile_set = False
+            expense_dashboard()
+        else:
+            st.error("Invalid username or password.")
+
+# Signup Page
+def signup_page():
+    st.title("Sign Up Page")
+    
+    username = st.text_input("Create a Username")
+    password = st.text_input("Create a Password", type="password")
+    confirm_password = st.text_input("Confirm Password", type="password")
+
+    if password != confirm_password:
+        st.error("Passwords do not match!")
+    elif password == "" or username == "":
+        st.error("Username and password cannot be empty.")
+    elif st.button("Sign Up"):
+        if register_user(username, password):
+            st.success("Account created successfully! Please login.")
+        else:
+            st.error("Username already taken.")
+
+# Main Logic
 if "username" not in st.session_state:
-    st.session_state.username = ""
-if "is_profile_set" not in st.session_state:
-    st.session_state.is_profile_set = False
-if "input_submitted" not in st.session_state:
-    st.session_state.input_submitted = False
-if "is_signing_up" not in st.session_state:
-    st.session_state.is_signing_up = False
-
-if "username" in st.session_state and st.session_state.username:
-    if not st.session_state.is_profile_set:
+    login_page()
+else:
+    if not st.session_state.get("is_profile_set", False):
         setup_profile()
     else:
         expense_dashboard()
-else:
-    st.header("Welcome to the Expense Manager!")
-    st.subheader("Log in to continue")
-
-    # Login Section
-    username = st.text_input("Enter your username", key="username_login")
-    password = st.text_input("Enter your password", type="password", key="password_login")
-    
-    login_col, new_user_col = st.columns(2)
-
-    with login_col:
-        if st.button("Login", key="login_button"):
-            if authenticate(username, password):
-                st.success(f"Logged in as {username}")
-            else:
-                st.error("Incorrect username or password.")
-
-    with new_user_col:
-        if st.button("New User", key="new_user_button"):
-            st.session_state.is_signing_up = True
-
-    st.markdown("[Forgotten account?](#)")
-
-    # Signup Section
-    if st.session_state.get("is_signing_up", False):
-        st.subheader("Sign up for a new account")
-        new_username = st.text_input("Enter a username", key="username_signup")
-        new_password = st.text_input("Enter a password", type="password", key="password_signup")
-
-        if st.button("Sign Up", key="signup_button"):
-            if register_user(new_username, new_password):
-                st.success(f"Account created for {new_username}. Please log in.")
-                st.session_state.is_signing_up = False
-            else:
-                st.error("Username already exists.")
