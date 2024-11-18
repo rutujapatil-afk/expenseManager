@@ -1,6 +1,10 @@
 
 import streamlit as st
-st.set_page_config(page_title="Investment Dashboard", layout="wide")
+st.set_page_config(
+    page_title="Policy Suggestion App",
+    layout="centered",  # Center the content
+    initial_sidebar_state="collapsed"  # Collapse sidebar by default
+)
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
