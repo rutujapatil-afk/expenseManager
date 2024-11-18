@@ -169,19 +169,7 @@ def visualize_spending_categories(monthly_spending):
     plt.ylabel("Spending Category", fontsize=14)
     st.pyplot(plt)
 
-    st.write("""
-            **What this graph shows:**
-            This graph breaks down your monthly expenses into different categories: Low, Medium, and High. 
-            Each bar represents how many months fall into each category, indicating the frequency of 
-            that spending level. 
-            
-            **Key Takeaways:**
-            - If most of your expenses fall into the 'Medium' category, this suggests that your spending 
-              is generally moderate.
-            - If you want to save, aim to bring down the frequency of 'High' spending months.
-    """)
-
-# Additional Visualizations
+# Visualization for Monthly Spending Trend
 def visualize_monthly_spending_trend(monthly_spending):
     plt.figure(figsize=(10, 6))
     sns.barplot(x=monthly_spending['Month'].astype(str), y=monthly_spending['Monthly Expense ($)'], palette='coolwarm')
@@ -191,6 +179,7 @@ def visualize_monthly_spending_trend(monthly_spending):
     plt.xticks(rotation=45)
     st.pyplot(plt)
 
+# Visualization for Average ROI by Policy Category
 def visualize_avg_roi_by_policy_category(policy_data):
     avg_roi_by_category = policy_data.groupby('ROI Category')['Expected ROI'].mean().reset_index()
     plt.figure(figsize=(10, 6))
@@ -204,6 +193,7 @@ def visualize_avg_roi_by_policy_category(policy_data):
 def display_policy_suggestion():
     st.title("Investment Policy Suggestion")
 
+    # Get user input for monthly investment and investment duration
     monthly_investment, investment_duration = get_user_input()
 
     if st.session_state.get("input_submitted", False):
