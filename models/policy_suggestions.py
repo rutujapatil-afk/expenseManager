@@ -6,6 +6,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.preprocessing import LabelEncoder
 import streamlit as st
+from sklearn.model_selection import train_test_split
+
 
 # Load Datasets
 @st.cache_data
