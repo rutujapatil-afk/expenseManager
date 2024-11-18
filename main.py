@@ -224,6 +224,9 @@ if "input_submitted" not in st.session_state:
     st.session_state.input_submitted = False
 if "is_signing_up" not in st.session_state:
     st.session_state.is_signing_up = False
+if "groups" not in st.session_state:
+    st.session_state.groups = {}
+
 
 if "username" in st.session_state and st.session_state.username:
     if not st.session_state.is_profile_set:
