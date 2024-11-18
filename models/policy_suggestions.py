@@ -138,13 +138,13 @@ def visualize_policy_comparison(top_policies):
         # Filter top 3 policies
         top_policies = top_policies.nlargest(3, 'Potential Return ($)')
 
-        # Set up the figure
-        plt.figure(figsize=(12, 8))
+        # Set up the figure with reduced size
+        plt.figure(figsize=(8, 6))  # Reduced size for better screen fit
         
         # Categories and indices
         categories = top_policies['Policy Name']
         x = np.arange(len(categories))
-        width = 0.25
+        width = 0.2  # Reduced width for less overlap
 
         # Bar chart for each metric
         bars1 = plt.bar(x - width, top_policies['Expected ROI'], width, label='Expected ROI (%)', color='#1f77b4', edgecolor='black')
@@ -155,17 +155,17 @@ def visualize_policy_comparison(top_policies):
         for bars in [bars1, bars2, bars3]:
             for bar in bars:
                 height = bar.get_height()
-                plt.text(bar.get_x() + bar.get_width() / 2, height + 0.1, f"{height:.1f}", ha='center', fontsize=10)
+                plt.text(bar.get_x() + bar.get_width() / 2, height + 0.05, f"{height:.1f}", ha='center', fontsize=9)
 
         # Adding labels and title
-        plt.xticks(x, categories, rotation=45, ha='right', fontsize=12)
-        plt.title("Comparison of Top 3 Policies", fontsize=18, weight='bold')
-        plt.xlabel("Policy Name", fontsize=14)
-        plt.ylabel("Values", fontsize=14)
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
-        plt.legend(loc='upper left', bbox_to_anchor=(1, 1), fontsize=12)
+        plt.xticks(x, categories, rotation=20, ha='right', fontsize=10)
+        plt.title("Top 3 Policies Comparison", fontsize=14, weight='bold')
+        plt.xlabel("Policy Name", fontsize=12)
+        plt.ylabel("Values", fontsize=12)
+        plt.grid(axis='y', linestyle='--', alpha=0.6)
+        plt.legend(loc='upper left', fontsize=10)
 
-        # Adjust layout for better readability
+        # Adjust layout for compactness
         plt.tight_layout()
 
         # Display the plot
@@ -177,10 +177,10 @@ def visualize_policy_comparison(top_policies):
             - **Expected ROI (%)**: Indicates the annual return rate you can expect from the policy.
             - **Investment Horizon (years)**: Shows the recommended duration for the investment.
             - **Potential Return ($)**: The total monetary return based on your investment input.
-            
+
             **How to use this:**
             - Compare policies to see which one offers the best combination of ROI, investment horizon, and returns.
-            - Look for policies that align with your financial goals and timeline.
+            - Choose policies that align with your financial goals and timeline.
         """)
     else:
         st.write("No suitable policies to visualize.")
