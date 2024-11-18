@@ -20,7 +20,7 @@ def load_data():
 
 policy_data, spending_data = load_data()
 
-# Modify the encoding of 'Policy Type' to numerical values with a scale of 25
+# Data Preprocessing
 def preprocess_data(spending_data, policy_data):
     spending_data.columns = spending_data.columns.str.strip()
     spending_data['Date'] = pd.to_datetime(spending_data['Date'])
@@ -33,20 +33,22 @@ def preprocess_data(spending_data, policy_data):
                                                     bins=[0, 500, 1500, np.inf],
                                                     labels=['Low', 'Medium', 'High'])
 
-    # Scale 'Policy Type' numerically, with a scale of 25
-    policy_type_mapping = {
-        'Type1': 25,
-        'Type2': 50,
-        'Type3': 75,
-        'Type4': 100,
-    }
-    policy_data['Policy Type'] = policy_data['Policy Type'].map(policy_type_mapping).fillna(0)
+    # Encoding policy types
+    le = LabelEncoder()
+    policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
 
     # Check if 'Expected ROI' column exists and use it for categorization
     if 'Expected ROI' in policy_data.columns:
-        policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'], bins=[0, 5, 10, 15, np.inf], labels=['Low', 'Medium', 'High', 'Very High'])
+        policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'],bins=[0, 5, 10, 15, np.inf],labels=['Low', 'Medium', 'High', 'Very High'])
     else:
         st.error("Column 'Expected ROI' is missing from policy data.")
+        return None, None
+
+    # Check for required columns and adjust if needed
+    required_columns = ['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']
+    missing_columns = [col for col in required_columns if col not in policy_data.columns]
+    if missing_columns:
+        st.error(f"Missing columns: {', '.join(missing_columns)}")
         return None, None
 
     return monthly_spending, policy_data
@@ -130,17 +132,17 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         st.write("No suitable policies found for your spending category.")
         return None, None
 
-# Modify the visualization function to show top 3 policies
+# Visualization
 def visualize_policy_comparison(suitable_policies):
     if suitable_policies is not None and not suitable_policies.empty:
-        # Filter to show only the top 3 policies based on Potential Return
-        top_policies = suitable_policies.nlargest(3, 'Potential Return ($)')  # Change to 3
-        
+        # Filter to show only the top 5 policies based on Potential Return
+        top_policies = suitable_policies.nlargest(5, 'Potential Return ($)')
+
         # Set up the plot
         plt.figure(figsize=(10, 6))
         sns.set_style("whitegrid")
         
-        # Plot horizontal bar chart for top 3 policies
+        # Plot horizontal bar chart for top 5 policies
         bar_plot = sns.barplot(
             data=top_policies,
             y='Policy Name',
@@ -150,7 +152,7 @@ def visualize_policy_comparison(suitable_policies):
         )
         
         # Adding labels and customizing the plot
-        plt.title("Top 3 Investment Policies by Potential Return", fontsize=16, weight='bold')  # Adjust title for 3
+        plt.title("Top 5 Investment Policies by Potential Return", fontsize=16, weight='bold')
         plt.xlabel("Potential Return ($)", fontsize=14)
         plt.ylabel("Policy Name", fontsize=14)
 
@@ -162,6 +164,7 @@ def visualize_policy_comparison(suitable_policies):
         st.pyplot(plt)
     else:
         st.write("No suitable policies to visualize.")
+
 
 def display_policy_suggestion():
     """
