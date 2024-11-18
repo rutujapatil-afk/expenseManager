@@ -3,8 +3,9 @@ import pandas as pd
 import hashlib
 import os
 from datetime import date
-from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
+from models.policy_suggestions import get_user_input, recommend_policy, policy_data, model_spending, display_policy_suggestion,efficiency_metrics,y_test_p, model_policy,X_test_p
 from models.spam_classifier import classify_message, extract_transaction_details
+from sklearn.metrics import classification_report
 
 # User Authentication Functions
 def hash_password(password):
@@ -148,6 +149,17 @@ def expense_dashboard():
                 st.session_state.input_submitted = True
                 recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
                 display_policy_suggestion()
+            
+            if st.button("Show Model Efficiency"):
+                st.subheader("Model Efficiency")
+                st.write(f"Spending Prediction Accuracy: {efficiency_metrics['Spending Prediction Accuracy']:.2f}%")
+                st.write(f"Policy Prediction Accuracy: {efficiency_metrics['Policy Prediction Accuracy']:.2f}%")
+
+                # Parse and display the classification report
+                st.write("Classification Report for Policies:")
+                report_dict = classification_report(y_test_p, model_policy.predict(X_test_p), output_dict=True)
+                report_df = pd.DataFrame(report_dict).transpose()
+                st.table(report_df)
     
     # SMS Classification Section
     with st.expander("SMS Classification"):
