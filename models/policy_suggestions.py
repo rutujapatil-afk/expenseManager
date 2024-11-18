@@ -169,15 +169,17 @@ def visualize_spending_categories(monthly_spending):
     plt.ylabel("Spending Category", fontsize=14)
     st.pyplot(plt)
 
+    # Simple Explanation
     st.write("""
-        **What this graph shows:**
-        This graph breaks down your monthly expenses into different categories: Low, Medium, and High.
-        Each bar represents how many months fall into each category, indicating the frequency of that spending level. 
-        
-        **Key Takeaways:**
-        - If most of your expenses fall into the 'Medium' category, this suggests that your spending 
-          is generally moderate.
-        - If you want to save, aim to bring down the frequency of 'High' spending months.
+            **What this graph shows:**
+            This graph breaks down your monthly expenses into different categories: Low, Medium, and High. 
+            Each bar represents how many months fall into each category, indicating the frequency of 
+            that spending level. 
+            
+            **Key Takeaways:**
+            - If most of your expenses fall into the 'Medium' category, this suggests that your spending 
+              is generally moderate.
+            - If you want to save, aim to bring down the frequency of 'High' spending months.
     """)
 
 # Main Streamlit App Interface
@@ -194,8 +196,6 @@ def display_policy_suggestion():
             if recommended_policy is not None and suitable_policies is not None:
                 visualize_policy_comparison(suitable_policies)
                 visualize_spending_categories(monthly_spending)
-        else:
-            st.write("Please click 'Analyze' after filling out your investment details.")
 
 if __name__ == "__main__":
     display_policy_suggestion()
