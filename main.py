@@ -117,11 +117,7 @@ def expense_dashboard():
 
         # Logout Button
         if st.button("Logout"):
-            st.session_state.username = ""
-            st.session_state.input_submitted = False
-            st.session_state.is_signing_up = False
             st.session_state.clear()
-            st.experimental_rerun()
 
     # Expense Management Section
     with st.expander("Expense Management"):
@@ -148,7 +144,6 @@ def expense_dashboard():
         with st.expander("Investment Policy Suggestions (ML Models)"):
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
-
             if st.button("Analyze Investment", key="analyze_investment"):
                 st.session_state.input_submitted = True
                 recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
@@ -178,22 +173,37 @@ def expense_dashboard():
 
     # Bill Splitting Section
     with st.expander("Bill Splitting"):
-        st.subheader("Group Expenses")
-        group_name = st.text_input("Group Name")
-        if group_name:
-            if len(st.session_state.get("current_group_members", [])) < 6:
-                new_member = st.text_input("Add member to group")
-                if new_member and new_member not in st.session_state.get("current_group_members", []):
-                    st.session_state.current_group_members.append(new_member)
+        st.subheader("Create a Group")
+        
+        registered_users = load_users()["username"].values.tolist()
+        if "current_group_members" not in st.session_state:
+            st.session_state.current_group_members = []
+
+        group_name = st.text_input("Enter Group Name")
+        new_member = st.text_input("Enter Username of Group Member")
+        
+        if st.button("Add Member"):
+            if new_member in registered_users and new_member not in st.session_state.current_group_members:
+                st.session_state.current_group_members.append(new_member)
+                st.success(f"Added member: {new_member}")
+            elif new_member in st.session_state.current_group_members:
+                st.warning(f"'{new_member}' is already added.")
+            else:
+                st.error("Username does not exist.")
+        
             if len(st.session_state.current_group_members) == 6:
                 st.warning("Maximum group size reached.")
-            st.write("Current Group Members:", ", ".join(st.session_state.get("current_group_members", [])))
 
-            if st.button("Create Group"):
-                if group_name and st.session_state.current_group_members:
-                    st.session_state.groups[group_name] = {"members": st.session_state.current_group_members, "transactions": []}
-                    st.success(f"Group '{group_name}' created!")
-                    st.session_state.current_group_members = []
+        st.write("Current Group Members:", ", ".join(st.session_state.current_group_members))
+
+        if st.button("Create Group"):
+            if group_name and st.session_state.current_group_members:
+                st.session_state.groups[group_name] = {
+                    "members": st.session_state.current_group_members,
+                    "transactions": [],
+                }
+                st.success(f"Group '{group_name}' created!")
+                st.session_state.current_group_members = []
 
 # Main Flow Logic
 if "username" not in st.session_state:
