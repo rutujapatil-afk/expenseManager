@@ -21,42 +21,42 @@ def load_data():
 policy_data, spending_data = load_data()
 
 # Data Preprocessing
+# Data Preprocessing
 def preprocess_data(spending_data, policy_data):
     spending_data.columns = spending_data.columns.str.strip()
     spending_data['Date'] = pd.to_datetime(spending_data['Date'])
     monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
     monthly_spending.rename(columns={'Amount': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
-    monthly_spending['Month'] = monthly_spending['Month'].dt.to_timestamp().dt.year * 100 + monthly_spending['Month'].dt.month
 
-    # Categorize monthly spending
+    monthly_spending['Month'] = monthly_spending['Month'].dt.year * 100 + monthly_spending['Month'].dt.month
+    monthly_spending['Monthly Expense ($)'] = pd.to_numeric(monthly_spending['Monthly Expense ($)'], errors='coerce')
+    monthly_spending = monthly_spending.dropna(subset=['Monthly Expense ($)'])
     monthly_spending['Spending Category'] = pd.cut(monthly_spending['Monthly Expense ($)'],
                                                     bins=[0, 500, 1500, np.inf],
                                                     labels=['Low', 'Medium', 'High'])
 
-    # Encoding policy types
     le = LabelEncoder()
     policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
 
-    # Check if 'Expected ROI' column exists and use it for categorization
     if 'Expected ROI' in policy_data.columns:
-        policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'],bins=[0, 5, 10, 15, np.inf],labels=['Low', 'Medium', 'High', 'Very High'])
+        policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'], bins=[0, 5, 10, 15, np.inf], labels=['Low', 'Medium', 'High', 'Very High'])
     else:
         st.error("Column 'Expected ROI' is missing from policy data.")
-        return None, None
+        return None, None, None
 
-    # Check for required columns and adjust if needed
-    required_columns = ['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']
-    missing_columns = [col for col in required_columns if col not in policy_data.columns]
-    if missing_columns:
-        st.error(f"Missing columns: {', '.join(missing_columns)}")
-        return None, None
+    if 'Investment Horizon' in policy_data.columns:
+        policy_data['Investment Horizon'] = policy_data['Investment Horizon'].str.extract(r'(\d+)', expand=False).astype(float)
+    else:
+        st.error("Column 'Investment Horizon' is missing from policy data.")
+        return None, None, None
 
-    return monthly_spending, policy_data
+    return monthly_spending, policy_data, le
 
-monthly_spending, policy_data = preprocess_data(spending_data, policy_data)
+monthly_spending, policy_data, le = preprocess_data(spending_data, policy_data)
 
-# Train the models
+# Train Models and Evaluate Efficiency
 def train_models(monthly_spending, policy_data):
+    # Spending Prediction Model
     X_spending = monthly_spending[['Month']]
     y_spending = monthly_spending['Spending Category']
     X_train_s, X_test_s, y_train_s, y_test_s = train_test_split(X_spending, y_spending, test_size=0.2, random_state=42)
@@ -64,6 +64,7 @@ def train_models(monthly_spending, policy_data):
     model_spending.fit(X_train_s, y_train_s)
     acc_spending = accuracy_score(y_test_s, model_spending.predict(X_test_s))
 
+    # Policy Prediction Model
     X_policy = policy_data[['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']]
     X_policy = pd.get_dummies(X_policy, drop_first=True)
     y_policy = policy_data['ROI Category']
@@ -72,9 +73,14 @@ def train_models(monthly_spending, policy_data):
     model_policy.fit(X_train_p, y_train_p)
     acc_policy = accuracy_score(y_test_p, model_policy.predict(X_test_p))
 
-    return model_spending, model_policy, acc_spending, acc_policy
+    efficiency_metrics = {
+        "Spending Prediction Accuracy": acc_spending * 100,
+        "Policy Prediction Accuracy": acc_policy * 100,
+    }
 
-model_spending, model_policy, acc_spending, acc_policy = train_models(monthly_spending, policy_data)
+    return model_spending, model_policy, efficiency_metrics, X_test_p, y_test_p
+
+model_spending, model_policy, efficiency_metrics, X_test_p, y_test_p = train_models(monthly_spending, policy_data)
 
 # User Input for investment
 def get_user_input():
@@ -102,7 +108,8 @@ def get_user_input():
     return st.session_state.monthly_investment, st.session_state.investment_duration
 
 # Policy Recommendation
-def recommend_policy(user_investment, investment_duration, policy_data, spending_model, label_encoder):
+def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
+    label_encoder=le
     user_spending = np.array([[user_investment]])
     predicted_category = spending_model.predict(user_spending)[0]
     st.write(f"Predicted Spending Category: {predicted_category}")
@@ -138,37 +145,36 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         st.write("No suitable policies found for your spending category.")
 
 # Visualization
-def visualize_policy_comparison(suitable_policies):
-    if suitable_policies is not None and not suitable_policies.empty:
-        # Filter to show only the top 5 policies based on Potential Return
-        top_policies = suitable_policies.nlargest(5, 'Potential Return ($)')
-
-        # Set up the plot
+def visualize_policy_comparison(top_policies):
+    if not top_policies.empty:
         plt.figure(figsize=(10, 6))
-        sns.set_style("whitegrid")
-        
-        # Plot horizontal bar chart for top 5 policies
-        bar_plot = sns.barplot(
-            data=top_policies,
-            y='Policy Name',
-            x='Potential Return ($)',
-            palette='viridis',
-            edgecolor='black'
-        )
-        
-        # Adding labels and customizing the plot
-        plt.title("Top 5 Investment Policies by Potential Return", fontsize=16, weight='bold')
-        plt.xlabel("Potential Return ($)", fontsize=14)
-        plt.ylabel("Policy Name", fontsize=14)
+        categories = top_policies['Policy Type'].astype(str)
+        x = np.arange(len(categories))
+        width = 0.3
 
-        # Add value labels to each bar
-        for index, value in enumerate(top_policies['Potential Return ($)']):
-            bar_plot.text(value, index, f'${value:,.2f}', color='black', va="center")
+        plt.bar(x - width, top_policies['Expected ROI'], width, label='Expected ROI (%)', color='blue')
+        plt.bar(x, top_policies['Investment Horizon'], width, label='Investment Horizon (years)', color='green')
+        plt.bar(x + width, top_policies['Potential Return ($)'], width, label='Potential Return ($)', color='purple')
 
-        # Display the plot in Streamlit
+        plt.xticks(x, categories, rotation=45)
+        plt.title("Top Policies Comparison", fontsize=16, weight='bold')
+        plt.xlabel("Policy Type", fontsize=14)
+        plt.ylabel("Values", fontsize=14)
+        plt.legend()
         st.pyplot(plt)
-    else:
-        st.write("No suitable policies to visualize.")
+
+        # Simple Explanation
+        st.write("""
+            **What this graph shows:**
+            This bar chart compares the top 3 policies based on their Expected ROI, Investment Horizon, 
+            and Potential Return. Each policy is represented by three bars: one for ROI, one for Horizon, 
+            and one for Potential Return.
+
+            **Key Takeaways:**
+            - The higher the ROI, the better the potential return on your investment.
+            - Longer investment horizons generally give more time for returns to accumulate.
+            - The 'Potential Return' is directly linked to your investment and expected ROI.
+        """)
 
 # Visualization Functions
 def visualize_monthly_spending_trend(monthly_spending):
@@ -247,15 +253,15 @@ def display_policy_suggestion():
     st.title("Investment Policy Suggestion")
 
     # Get user input
-    monthly_investment, investment_duration = get_user_input()
+    #monthly_investment, investment_duration = get_user_input()
 
     # Wait until the input is submitted
     if st.session_state.get("input_submitted", False):
-        if st.button('Analyze'):
-            recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-            # Visualizations
-            visualize_monthly_spending_trend(monthly_spending)
-            visualize_spending_categories(monthly_spending)
-            visualize_roi_bar(policy_data)
-        else:
-            st.write("Please click 'Analyze' after filling out your investment details.")
+        visualize_monthly_spending_trend(monthly_spending)
+        visualize_spending_categories(monthly_spending)
+        visualize_roi_bar(policy_data)
+
+    else:
+        st.write("Please click 'Analyze' after filling out your investment details.")
+
+    
