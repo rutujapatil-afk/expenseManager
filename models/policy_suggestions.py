@@ -20,7 +20,7 @@ def load_data():
 
 policy_data, spending_data = load_data()
 
-# Data Preprocessing
+# Modify the encoding of 'Policy Type' to numerical values with a scale of 25
 def preprocess_data(spending_data, policy_data):
     spending_data.columns = spending_data.columns.str.strip()
     spending_data['Date'] = pd.to_datetime(spending_data['Date'])
@@ -33,22 +33,20 @@ def preprocess_data(spending_data, policy_data):
                                                     bins=[0, 500, 1500, np.inf],
                                                     labels=['Low', 'Medium', 'High'])
 
-    # Encoding policy types
-    le = LabelEncoder()
-    policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
+    # Scale 'Policy Type' numerically, with a scale of 25
+    policy_type_mapping = {
+        'Type1': 25,
+        'Type2': 50,
+        'Type3': 75,
+        'Type4': 100,
+    }
+    policy_data['Policy Type'] = policy_data['Policy Type'].map(policy_type_mapping).fillna(0)
 
     # Check if 'Expected ROI' column exists and use it for categorization
     if 'Expected ROI' in policy_data.columns:
         policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'], bins=[0, 5, 10, 15, np.inf], labels=['Low', 'Medium', 'High', 'Very High'])
     else:
         st.error("Column 'Expected ROI' is missing from policy data.")
-        return None, None
-
-    # Check for required columns and adjust if needed
-    required_columns = ['Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment']
-    missing_columns = [col for col in required_columns if col not in policy_data.columns]
-    if missing_columns:
-        st.error(f"Missing columns: {', '.join(missing_columns)}")
         return None, None
 
     return monthly_spending, policy_data
@@ -77,14 +75,14 @@ def train_models(monthly_spending, policy_data):
 model_spending, model_policy, acc_spending, acc_policy = train_models(monthly_spending, policy_data)
 
 # User Input for investment
-def get_user_input(form_key="investment_form"):
+def get_user_input():
     """
     Get the user input for monthly investment and investment duration.
     """
     st.header("Enter Your Investment Details")
 
-    # Creating a form to input investment amount and duration with dynamic keys
-    with st.form(key=form_key):
+    # Creating a form to input investment amount and duration
+    with st.form(key='investment_form'):
         monthly_investment = st.number_input("Enter your monthly investment amount ($):", min_value=0.0, value=100.0, step=10.0)
         investment_duration = st.number_input("Enter your investment duration (in months):", min_value=1, max_value=600, value=12)
 
@@ -132,78 +130,54 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         st.write("No suitable policies found for your spending category.")
         return None, None
 
-# Visualization for Top Policies
-def visualize_policy_comparison(top_policies):
-    if not top_policies.empty:
-        top_policies = top_policies.nlargest(3, 'Potential Return ($)')
-        plt.figure(figsize=(8, 6))
-        categories = top_policies['Policy Name']
-        x = np.arange(len(categories))
-        width = 0.2
+# Modify the visualization function to show top 3 policies
+def visualize_policy_comparison(suitable_policies):
+    if suitable_policies is not None and not suitable_policies.empty:
+        # Filter to show only the top 3 policies based on Potential Return
+        top_policies = suitable_policies.nlargest(3, 'Potential Return ($)')  # Change to 3
+        
+        # Set up the plot
+        plt.figure(figsize=(10, 6))
+        sns.set_style("whitegrid")
+        
+        # Plot horizontal bar chart for top 3 policies
+        bar_plot = sns.barplot(
+            data=top_policies,
+            y='Policy Name',
+            x='Potential Return ($)',
+            palette='viridis',
+            edgecolor='black'
+        )
+        
+        # Adding labels and customizing the plot
+        plt.title("Top 3 Investment Policies by Potential Return", fontsize=16, weight='bold')  # Adjust title for 3
+        plt.xlabel("Potential Return ($)", fontsize=14)
+        plt.ylabel("Policy Name", fontsize=14)
 
-        bars1 = plt.bar(x - width, top_policies['Expected ROI'], width, label='Expected ROI (%)', color='#1f77b4', edgecolor='black')
-        bars2 = plt.bar(x, top_policies['Investment Horizon'], width, label='Investment Horizon (years)', color='#2ca02c', edgecolor='black')
-        bars3 = plt.bar(x + width, top_policies['Potential Return ($)'], width, label='Potential Return ($)', color='#d62728', edgecolor='black')
+        # Add value labels to each bar
+        for index, value in enumerate(top_policies['Potential Return ($)']):
+            bar_plot.text(value, index, f'${value:,.2f}', color='black', va="center")
 
-        for bars in [bars1, bars2, bars3]:
-            for bar in bars:
-                height = bar.get_height()
-                plt.text(bar.get_x() + bar.get_width() / 2, height + 0.05, f"{height:.1f}", ha='center', fontsize=9)
-
-        plt.xticks(x, categories, rotation=20, ha='right', fontsize=10)
-        plt.title("Top 3 Policies Comparison", fontsize=14, weight='bold')
-        plt.xlabel("Policy Name", fontsize=12)
-        plt.ylabel("Values", fontsize=12)
-        plt.grid(axis='y', linestyle='--', alpha=0.6)
-        plt.legend(loc='upper left', fontsize=10)
-        plt.tight_layout()
+        # Display the plot in Streamlit
         st.pyplot(plt)
+    else:
+        st.write("No suitable policies to visualize.")
 
-# Visualization for Spending Categories
-def visualize_spending_categories(monthly_spending):
-    spending_category_counts = monthly_spending['Spending Category'].value_counts().sort_values()
-    plt.figure(figsize=(10, 6))
-    sns.barplot(y=spending_category_counts.index, x=spending_category_counts, palette='viridis')
-    plt.title("Spending Category Distribution", fontsize=16, weight='bold')
-    plt.xlabel("Count", fontsize=14)
-    plt.ylabel("Spending Category", fontsize=14)
-    st.pyplot(plt)
-
-# Visualization for Monthly Spending Trend
-def visualize_monthly_spending_trend(monthly_spending):
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x=monthly_spending['Month'].astype(str), y=monthly_spending['Monthly Expense ($)'], palette='coolwarm')
-    plt.title("Monthly Spending Trend", fontsize=16, weight='bold')
-    plt.xlabel("Month", fontsize=14)
-    plt.ylabel("Total Spending ($)", fontsize=14)
-    plt.xticks(rotation=45)
-    st.pyplot(plt)
-
-# Visualization for Average ROI by Policy Category
-def visualize_avg_roi_by_policy_category(policy_data):
-    avg_roi_by_category = policy_data.groupby('ROI Category')['Expected ROI'].mean().reset_index()
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x='ROI Category', y='Expected ROI', data=avg_roi_by_category, palette='muted')
-    plt.title("Average Expected ROI by Policy Category", fontsize=16, weight='bold')
-    plt.xlabel("Policy Category", fontsize=14)
-    plt.ylabel("Average Expected ROI (%)", fontsize=14)
-    st.pyplot(plt)
-
-# Main Streamlit App Interface
 def display_policy_suggestion():
+    """
+    Display the policy suggestion based on the user input
+    """
     st.title("Investment Policy Suggestion")
 
-    # Get user input for monthly investment and investment duration
+    # Get user input
     monthly_investment, investment_duration = get_user_input()
 
+    # Wait until the input is submitted
     if st.session_state.get("input_submitted", False):
         if st.button('Analyze'):
             recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+            
             if recommended_policy is not None and suitable_policies is not None:
                 visualize_policy_comparison(suitable_policies)
-                visualize_spending_categories(monthly_spending)
-                visualize_monthly_spending_trend(monthly_spending)
-                visualize_avg_roi_by_policy_category(policy_data)
-
-if __name__ == "__main__":
-    display_policy_suggestion()
+        else:
+            st.write("Please click 'Analyze' after filling out your investment details.")
