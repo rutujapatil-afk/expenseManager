@@ -101,29 +101,6 @@ def get_user_input(form_key="investment_form"):
 
     return st.session_state.monthly_investment, st.session_state.investment_duration
 
-def visualize_spending_categories(monthly_spending):
-    spending_category_counts = monthly_spending['Spending Category'].value_counts().sort_values()
-    plt.figure(figsize=(10, 6))
-    sns.barplot(y=spending_category_counts.index, x=spending_category_counts, palette='viridis')
-    plt.title("Spending Category Distribution", fontsize=16, weight='bold')
-    plt.xlabel("Count", fontsize=14)
-    plt.ylabel("Spending Category", fontsize=14)
-    st.pyplot(plt)
-
-    # Simple Explanation
-    st.write("""
-            **What this graph shows:**
-            This graph breaks down your monthly expenses into different categories: Low, Medium, and High. 
-            Each bar represents how many months fall into each category, indicating the frequency of 
-            that spending level. 
-            
-            **Key Takeaways:**
-            - If most of your expenses fall into the 'Medium' category, this suggests that your spending 
-              is generally moderate.
-            - If you want to save, aim to bring down the frequency of 'High' spending months.
-    """)
-
-
 # Policy Recommendation
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
     user_spending = np.array([[user_investment]])
@@ -155,78 +132,70 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         st.write("No suitable policies found for your spending category.")
         return None, None
 
-# Visualization
+# Visualization for Top Policies
 def visualize_policy_comparison(top_policies):
     if not top_policies.empty:
-        # Filter top 3 policies
         top_policies = top_policies.nlargest(3, 'Potential Return ($)')
-
-        # Set up the figure with reduced size
-        plt.figure(figsize=(8, 6))  # Reduced size for better screen fit
-        
-        # Categories and indices
+        plt.figure(figsize=(8, 6))
         categories = top_policies['Policy Name']
         x = np.arange(len(categories))
-        width = 0.2  # Reduced width for less overlap
+        width = 0.2
 
-        # Bar chart for each metric
         bars1 = plt.bar(x - width, top_policies['Expected ROI'], width, label='Expected ROI (%)', color='#1f77b4', edgecolor='black')
         bars2 = plt.bar(x, top_policies['Investment Horizon'], width, label='Investment Horizon (years)', color='#2ca02c', edgecolor='black')
         bars3 = plt.bar(x + width, top_policies['Potential Return ($)'], width, label='Potential Return ($)', color='#d62728', edgecolor='black')
 
-        # Adding annotations
         for bars in [bars1, bars2, bars3]:
             for bar in bars:
                 height = bar.get_height()
                 plt.text(bar.get_x() + bar.get_width() / 2, height + 0.05, f"{height:.1f}", ha='center', fontsize=9)
 
-        # Adding labels and title
         plt.xticks(x, categories, rotation=20, ha='right', fontsize=10)
         plt.title("Top 3 Policies Comparison", fontsize=14, weight='bold')
         plt.xlabel("Policy Name", fontsize=12)
         plt.ylabel("Values", fontsize=12)
         plt.grid(axis='y', linestyle='--', alpha=0.6)
         plt.legend(loc='upper left', fontsize=10)
-
-        # Adjust layout for compactness
         plt.tight_layout()
-
-        # Display the plot
         st.pyplot(plt)
 
-        # Explanation
-        st.write("""
-            **What this graph shows:**
-            - **Expected ROI (%)**: Indicates the annual return rate you can expect from the policy.
-            - **Investment Horizon (years)**: Shows the recommended duration for the investment.
-            - **Potential Return ($)**: The total monetary return based on your investment input.
+# Visualization for Spending Categories
+def visualize_spending_categories(monthly_spending):
+    spending_category_counts = monthly_spending['Spending Category'].value_counts().sort_values()
+    plt.figure(figsize=(10, 6))
+    sns.barplot(y=spending_category_counts.index, x=spending_category_counts, palette='viridis')
+    plt.title("Spending Category Distribution", fontsize=16, weight='bold')
+    plt.xlabel("Count", fontsize=14)
+    plt.ylabel("Spending Category", fontsize=14)
+    st.pyplot(plt)
 
-            **How to use this:**
-            - Compare policies to see which one offers the best combination of ROI, investment horizon, and returns.
-            - Choose policies that align with your financial goals and timeline.
-        """)
-    else:
-        st.write("No suitable policies to visualize.")
+    st.write("""
+        **What this graph shows:**
+        This graph breaks down your monthly expenses into different categories: Low, Medium, and High.
+        Each bar represents how many months fall into each category, indicating the frequency of that spending level. 
+        
+        **Key Takeaways:**
+        - If most of your expenses fall into the 'Medium' category, this suggests that your spending 
+          is generally moderate.
+        - If you want to save, aim to bring down the frequency of 'High' spending months.
+    """)
 
+# Main Streamlit App Interface
 def display_policy_suggestion():
-    """
-    Display the policy suggestion based on the user input
-    """
     st.title("Investment Policy Suggestion")
 
     # Get user input
-    monthly_investment, investment_duration = get_user_input(form_key="investment_form_unique")
+    monthly_investment, investment_duration = get_user_input()
 
-    # Wait until the input is submitted
+    # Analyze button
     if st.session_state.get("input_submitted", False):
         if st.button('Analyze'):
             recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-            
             if recommended_policy is not None and suitable_policies is not None:
                 visualize_policy_comparison(suitable_policies)
+                visualize_spending_categories(monthly_spending)
         else:
             st.write("Please click 'Analyze' after filling out your investment details.")
 
-# Run the application
 if __name__ == "__main__":
     display_policy_suggestion()
