@@ -198,10 +198,8 @@ def expense_dashboard():
             else:
                 st.error("Username does not exist.")
         
-            if len(st.session_state.current_group_members) == 6:
-                st.warning("Maximum group size reached.")
-
-        st.write("Group Members:", st.session_state.current_group_members)
+            if len(st.session_state.current_group_members) > 1:
+                st.write("Group Members:", st.session_state.current_group_members)
 
 # Login Page
 def login_page():
