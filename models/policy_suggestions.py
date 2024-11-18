@@ -169,7 +169,6 @@ def visualize_spending_categories(monthly_spending):
     plt.ylabel("Spending Category", fontsize=14)
     st.pyplot(plt)
 
-    # Simple Explanation
     st.write("""
             **What this graph shows:**
             This graph breaks down your monthly expenses into different categories: Low, Medium, and High. 
@@ -182,20 +181,39 @@ def visualize_spending_categories(monthly_spending):
             - If you want to save, aim to bring down the frequency of 'High' spending months.
     """)
 
+# Additional Visualizations
+def visualize_monthly_spending_trend(monthly_spending):
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=monthly_spending['Month'].astype(str), y=monthly_spending['Monthly Expense ($)'], palette='coolwarm')
+    plt.title("Monthly Spending Trend", fontsize=16, weight='bold')
+    plt.xlabel("Month", fontsize=14)
+    plt.ylabel("Total Spending ($)", fontsize=14)
+    plt.xticks(rotation=45)
+    st.pyplot(plt)
+
+def visualize_avg_roi_by_policy_category(policy_data):
+    avg_roi_by_category = policy_data.groupby('ROI Category')['Expected ROI'].mean().reset_index()
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x='ROI Category', y='Expected ROI', data=avg_roi_by_category, palette='muted')
+    plt.title("Average Expected ROI by Policy Category", fontsize=16, weight='bold')
+    plt.xlabel("Policy Category", fontsize=14)
+    plt.ylabel("Average Expected ROI (%)", fontsize=14)
+    st.pyplot(plt)
+
 # Main Streamlit App Interface
 def display_policy_suggestion():
     st.title("Investment Policy Suggestion")
 
-    # Get user input
     monthly_investment, investment_duration = get_user_input()
 
-    # Analyze button
     if st.session_state.get("input_submitted", False):
         if st.button('Analyze'):
             recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
             if recommended_policy is not None and suitable_policies is not None:
                 visualize_policy_comparison(suitable_policies)
                 visualize_spending_categories(monthly_spending)
+                visualize_monthly_spending_trend(monthly_spending)
+                visualize_avg_roi_by_policy_category(policy_data)
 
 if __name__ == "__main__":
     display_policy_suggestion()
