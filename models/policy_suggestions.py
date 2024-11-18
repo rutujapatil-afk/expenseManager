@@ -14,14 +14,19 @@ def load_data():
     """
     Load the policy and spending data from CSV files.
     """
-    policy_data = pd.read_csv("data/insurance_policies_dataset.csv")
-    spending_data = pd.read_csv("data/transactions.csv")
-    return policy_data, spending_data
-
-policy_data, spending_data = load_data()
+    try:
+        policy_data = pd.read_csv("data/insurance_policies_dataset.csv")
+        spending_data = pd.read_csv("data/transactions.csv")
+        return policy_data, spending_data
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None, None
 
 # Data Preprocessing
 def preprocess_data(spending_data, policy_data):
+    if spending_data is None or policy_data is None:
+        return None, None
+
     spending_data.columns = spending_data.columns.str.strip()
     spending_data['Date'] = pd.to_datetime(spending_data['Date'])
     monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
@@ -53,10 +58,11 @@ def preprocess_data(spending_data, policy_data):
 
     return monthly_spending, policy_data
 
-monthly_spending, policy_data = preprocess_data(spending_data, policy_data)
-
 # Train the models
 def train_models(monthly_spending, policy_data):
+    if monthly_spending is None or policy_data is None:
+        return None, None, None, None
+
     X_spending = monthly_spending[['Month']]
     y_spending = monthly_spending['Spending Category']
     X_train_s, X_test_s, y_train_s, y_test_s = train_test_split(X_spending, y_spending, test_size=0.2, random_state=42)
@@ -73,8 +79,6 @@ def train_models(monthly_spending, policy_data):
     acc_policy = accuracy_score(y_test_p, model_policy.predict(X_test_p))
 
     return model_spending, model_policy, acc_spending, acc_policy
-
-model_spending, model_policy, acc_spending, acc_policy = train_models(monthly_spending, policy_data)
 
 # User Input for investment
 def get_user_input(form_key="investment_form"):
@@ -161,49 +165,53 @@ def visualize_policy_comparison(top_policies):
 
 # Visualization for Spending Categories
 def visualize_spending_categories(monthly_spending):
-    spending_category_counts = monthly_spending['Spending Category'].value_counts().sort_values()
-    plt.figure(figsize=(10, 6))
-    sns.barplot(y=spending_category_counts.index, x=spending_category_counts, palette='viridis')
-    plt.title("Spending Category Distribution", fontsize=16, weight='bold')
-    plt.xlabel("Count", fontsize=14)
-    plt.ylabel("Spending Category", fontsize=14)
-    st.pyplot(plt)
+    if monthly_spending is not None:
+        spending_category_counts = monthly_spending['Spending Category'].value_counts().sort_values()
+        plt.figure(figsize=(10, 6))
+        sns.barplot(y=spending_category_counts.index, x=spending_category_counts, palette='viridis')
+        plt.title("Spending Category Distribution", fontsize=16, weight='bold')
+        plt.xlabel("Count", fontsize=14)
+        plt.ylabel("Spending Category", fontsize=14)
+        st.pyplot(plt)
 
 # Visualization for Monthly Spending Trend
 def visualize_monthly_spending_trend(monthly_spending):
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x=monthly_spending['Month'].astype(str), y=monthly_spending['Monthly Expense ($)'], palette='coolwarm')
-    plt.title("Monthly Spending Trend", fontsize=16, weight='bold')
-    plt.xlabel("Month", fontsize=14)
-    plt.ylabel("Total Spending ($)", fontsize=14)
-    plt.xticks(rotation=45)
-    st.pyplot(plt)
+    if monthly_spending is not None:
+        plt.figure(figsize=(10, 6))
+        plt.plot(monthly_spending['Month'], monthly_spending['Monthly Expense ($)'], marker='o', color='b', linestyle='-', markersize=6)
+        plt.title("Monthly Spending Trend", fontsize=16, weight='bold')
+        plt.xlabel("Month", fontsize=14)
+        plt.ylabel("Monthly Expense ($)", fontsize=14)
+        plt.xticks(rotation=45)
+        plt.grid(True)
+        st.pyplot(plt)
 
-# Visualization for Average ROI by Policy Category
-def visualize_avg_roi_by_policy_category(policy_data):
-    avg_roi_by_category = policy_data.groupby('ROI Category')['Expected ROI'].mean().reset_index()
-    plt.figure(figsize=(10, 6))
-    sns.barplot(x='ROI Category', y='Expected ROI', data=avg_roi_by_category, palette='muted')
-    plt.title("Average Expected ROI by Policy Category", fontsize=16, weight='bold')
-    plt.xlabel("Policy Category", fontsize=14)
-    plt.ylabel("Average Expected ROI (%)", fontsize=14)
-    st.pyplot(plt)
+# Main function to run the app
+def main():
+    st.title("Investment Policy Suggestions")
+    
+    policy_data, spending_data = load_data()
 
-# Main Streamlit App Interface
-def display_policy_suggestion():
-    st.title("Investment Policy Suggestion")
+    monthly_spending, policy_data = preprocess_data(spending_data, policy_data)
 
-    # Get user input for monthly investment and investment duration
-    monthly_investment, investment_duration = get_user_input()
+    # Train models
+    model_spending, model_policy, acc_spending, acc_policy = train_models(monthly_spending, policy_data)
+    st.write(f"Spending Model Accuracy: {acc_spending*100:.2f}%")
+    st.write(f"Policy Model Accuracy: {acc_policy*100:.2f}%")
 
-    if st.session_state.get("input_submitted", False):
-        if st.button('Analyze'):
-            recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-            if recommended_policy is not None and suitable_policies is not None:
-                visualize_policy_comparison(suitable_policies)
-                visualize_spending_categories(monthly_spending)
-                visualize_monthly_spending_trend(monthly_spending)
-                visualize_avg_roi_by_policy_category(policy_data)
+    # Get user input
+    user_investment, investment_duration = get_user_input()
+
+    if user_investment and investment_duration:
+        recommended_policy, suitable_policies = recommend_policy(user_investment, investment_duration, policy_data, model_spending)
+
+        # Visualize top policies if a recommendation is made
+        if recommended_policy is not None:
+            visualize_policy_comparison(suitable_policies)
+
+    # Visualizations
+    visualize_spending_categories(monthly_spending)
+    visualize_monthly_spending_trend(monthly_spending)
 
 if __name__ == "__main__":
-    display_policy_suggestion()
+    main()
