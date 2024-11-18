@@ -10,7 +10,6 @@ from sklearn.metrics import accuracy_score
 from datetime import date
 import os
 
-from main import get_user_input
 # Load Data
 @st.cache_data
 def load_data():
@@ -68,6 +67,18 @@ def preprocess_data(spending_data, policy_data):
         return None, None, None
 
     return monthly_spending, policy_data, le
+
+# Get User Input (Moving the user input function here)
+def get_user_input():
+    """
+    Function to get user input for investment goal and duration.
+    """
+    investment_goal = st.text_input("Enter your investment goal")
+    investment_duration = st.number_input("Enter your investment duration (in years)", min_value=1)
+
+    if investment_goal and investment_duration:
+        return investment_goal, investment_duration
+    return None, None
 
 # Train Models and Evaluate Efficiency
 def train_models(monthly_spending, policy_data):
@@ -270,3 +281,4 @@ def main():
 
             # Recommend policies after submission
             recommend_policy(investment_goal, investment_duration, policy_data, spending_model, le)
+
