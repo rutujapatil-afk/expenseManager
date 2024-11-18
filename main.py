@@ -1,30 +1,26 @@
+
 import streamlit as st
-import pandas as pd
-import hashlib
-import os
-from datetime import date
-
-# Import necessary custom modules
-from models.policy_suggestions import (
-    visualize_policy_comparison,
-    get_user_input,
-    policy_data,
-    model_spending,
-    display_policy_suggestion,
-    visualize_spending_categories,
-    visualize_monthly_spending_trend,
-    visualize_avg_roi_by_policy_category
-)
-from .models.policy_suggestions import recommend_policy
-
-from models.spam_classifier import classify_message, extract_transaction_details
-
-# Set the page configuration for Streamlit
 st.set_page_config(
     page_title="Policy Suggestion App",
     layout="centered",  # Center the content
     initial_sidebar_state="collapsed"  # Collapse sidebar by default
 )
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import LabelEncoder
+import hashlib
+from datetime import date
+import os
+
+# Import your custom modules after the page config
+from models.policy_suggestions import recommend_policy, visualize_policy_comparison, get_user_input,policy_data,model_spending,display_policy_suggestion
+
+from models.spam_classifier import classify_message, extract_transaction_details
 
 # User Authentication Functions
 def hash_password(password):
@@ -162,17 +158,17 @@ def expense_dashboard():
     # Investment Policy Suggestions Section
     if st.session_state.get("is_profile_set", False):
         with st.expander("Investment Policy Suggestions (ML Models)"):
-
             st.subheader("Investment Suggestions")
             monthly_investment, investment_duration = get_user_input()
             if st.button("Analyze Investment", key="analyze_investment"):
                 st.session_state.input_submitted = True
                 recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
                 if recommended_policy is not None and suitable_policies is not None:
-                    visualize_policy_comparison(suitable_policies)  # Ensure st.pyplot is used in the function
-                    visualize_spending_categories(monthly_investment)  # Use st.pyplot for the graph
-                    visualize_monthly_spending_trend(monthly_investment)  # Use st.pyplot here as well
-                    visualize_avg_roi_by_policy_category(suitable_policies)  # st.pyplot used
+                    visualize_policy_comparison(suitable_policies)
+                    visualize_policy_comparison(suitable_policies)  # Make sure this function includes st.pyplot
+                    visualize_spending_categories(monthly_spending)  # This should also include st.pyplot for the chart
+                    visualize_monthly_trend(monthly_spending)  # Similarly, include st.pyplot here
+                    visualize_roi_by_policy_category(suitable_policies)  # Include st.pyplot as well
 
                 display_policy_suggestion(monthly_investment, investment_duration)
 
