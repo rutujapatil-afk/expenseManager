@@ -256,13 +256,17 @@ def main():
     # Train Models
     spending_model, policy_model, efficiency_metrics, X_test_p, y_test_p = train_models(monthly_spending, policy_data)
 
-    # Display Data Insights after Profile Setup
+    # Only Show Insights after User Input and Click on "Submit"
     if username and user_data is not None:
-        if st.button("Show Data Insights"):
+        # Add a "Submit" button to trigger insights display
+        submit_button = st.button("Submit Investment Details")
+
+        if submit_button:
+            # Show the visualizations only after submit
+            st.subheader("Data Insights:")
             visualize_monthly_spending_trend(monthly_spending)
             visualize_spending_categories(monthly_spending)
             visualize_roi_bar(policy_data)
-            recommend_policy(investment_goal, investment_duration, policy_data, spending_model, le)
 
-if __name__ == "__main__":
-    main()
+            # Recommend policies after submission
+            recommend_policy(investment_goal, investment_duration, policy_data, spending_model, le)
