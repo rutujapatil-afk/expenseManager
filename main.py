@@ -19,6 +19,7 @@ import os
 
 # Import your custom modules after the page config
 from models.policy_suggestions import recommend_policy, visualize_policy_comparison, get_user_input,policy_data,model_spending,display_policy_suggestion
+from models.policy_suggestions import visualize_policy_comparison,visualize_spending_categories,visualize_monthly_spending_trend,visualize_avg_roi_by_policy_category
 
 from models.spam_classifier import classify_message, extract_transaction_details
 
@@ -164,7 +165,11 @@ def expense_dashboard():
                 st.session_state.input_submitted = True
                 recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
                 if recommended_policy is not None and suitable_policies is not None:
-                    visualize_policy_comparison(suitable_policies)
+                    visualize_policy_comparison(suitable_policies)  # Make sure this function includes st.pyplot
+                    visualize_spending_categories(monthly_spending)  # This should also include st.pyplot for the chart
+                    visualize_monthly_trend(monthly_spending)  # Similarly, include st.pyplot here
+                    visualize_roi_by_policy_category(suitable_policies)  # Include st.pyplot as well
+
                 display_policy_suggestion(monthly_investment, investment_duration)
 
     # SMS Classification Section
