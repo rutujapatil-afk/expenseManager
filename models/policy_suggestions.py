@@ -7,6 +7,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from datetime import date
+import os
 
 # Load Data
 @st.cache_data
@@ -181,11 +183,84 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
         st.write(f"**Minimum Investment:** ${best_policy['Minimum Investment']:.2f}")
         st.write(f"**Potential Return:** ${best_policy['Potential Return ($)']:.2f}")
     else:
-        st.write("No suitable policies found for your spending category.")
+        st.write("No suitable policies found.")
 
-# Get User Input for Recommendation
-def get_user_input():
-    st.subheader("Enter Your Investment Details")
-    user_investment = st.number_input("Investment Amount ($)", min_value=1000, max_value=100000, step=1000)
-    investment_duration = st.number_input("Investment Duration (years)", min_value=1, max_value=30, step=1)
-    return user_investment, investment_duration
+# User Profile Setup
+class UserAccount:
+    def __init__(self, username, investment_goal, investment_duration):
+        self.username = username
+        self.investment_goal = investment_goal
+        self.investment_duration = investment_duration
+
+    def save(self):
+        """
+        Saves user data into a CSV or database.
+        """
+        user_data = pd.DataFrame([{
+            'Username': self.username,
+            'Investment Goal': self.investment_goal,
+            'Investment Duration': self.investment_duration
+        }])
+
+        if os.path.exists("user_data.csv"):
+            user_data.to_csv("user_data.csv", mode='a', header=False, index=False)
+        else:
+            user_data.to_csv("user_data.csv", mode='w', header=True, index=False)
+
+    @staticmethod
+    def load_user_data(username):
+        """
+        Loads user data based on username.
+        """
+        if os.path.exists("user_data.csv"):
+            user_data = pd.read_csv("user_data.csv")
+            user_info = user_data[user_data['Username'] == username]
+            return user_info
+        else:
+            return None
+
+# Main Streamlit Application
+def main():
+    st.title("Investment Dashboard")
+
+    # Login
+    st.sidebar.subheader("Login")
+    username = st.sidebar.text_input("Username")
+    if username:
+        user_data = UserAccount.load_user_data(username)
+        if user_data is not None:
+            st.sidebar.success("Welcome back!")
+            investment_goal = user_data['Investment Goal'].iloc[0]
+            investment_duration = user_data['Investment Duration'].iloc[0]
+        else:
+            st.sidebar.warning("User not found. Please sign up.")
+
+    # Profile Setup
+    if username and user_data is None:
+        st.subheader("Profile Setup")
+        investment_goal = st.text_input("Enter Your Investment Goal:")
+        investment_duration = st.number_input("Enter Your Investment Duration (years):", min_value=1)
+        if st.button("Save Profile"):
+            user_account = UserAccount(username, investment_goal, investment_duration)
+            user_account.save()
+            st.success("Profile saved successfully!")
+
+    # Load Data
+    policy_data, spending_data = load_data()
+
+    # Preprocess Data
+    monthly_spending, policy_data, le = preprocess_data(spending_data, policy_data)
+
+    # Train Models
+    spending_model, policy_model, efficiency_metrics, X_test_p, y_test_p = train_models(monthly_spending, policy_data)
+
+    # Display Data Insights after Profile Setup
+    if username and user_data is not None:
+        if st.button("Show Data Insights"):
+            visualize_monthly_spending_trend(monthly_spending)
+            visualize_spending_categories(monthly_spending)
+            visualize_roi_bar(policy_data)
+            recommend_policy(investment_goal, investment_duration, policy_data, spending_model, le)
+
+if __name__ == "__main__":
+    main()
