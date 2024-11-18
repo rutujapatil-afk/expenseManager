@@ -235,12 +235,13 @@ class UserAccount:
 def main():
     st.title("Investment Dashboard")
 
-    # Login
+    # Sidebar Login
     st.sidebar.subheader("Login")
     username = st.sidebar.text_input("Username")
     user_data = None  # Initialize user_data variable
 
     if username:
+        # Check if user exists in saved data
         user_data = UserAccount.load_user_data(username)
         if user_data is not None:
             st.sidebar.success("Welcome back!")
@@ -258,17 +259,20 @@ def main():
             user_account.save()
             st.success("Profile saved successfully!")
 
-    # Load Data
-    policy_data, spending_data = load_data()
-
-    # Preprocess Data
-    monthly_spending, policy_data, le = preprocess_data(spending_data, policy_data)
-
-    # Train Models
-    spending_model, policy_model, efficiency_metrics, X_test_p, y_test_p = train_models(monthly_spending, policy_data)
-
-    # Only Show Insights after User Input and Click on "Submit"
+    # Only proceed if the user is logged in and profile is set
     if username and user_data is not None:
+        st.subheader(f"Welcome, {username}!")
+        st.write("Here's your personalized dashboard.")
+
+        # Load Data
+        policy_data, spending_data = load_data()
+
+        # Preprocess Data
+        monthly_spending, policy_data, le = preprocess_data(spending_data, policy_data)
+
+        # Train Models
+        spending_model, policy_model, efficiency_metrics, X_test_p, y_test_p = train_models(monthly_spending, policy_data)
+
         # Add a "Submit" button to trigger insights display
         submit_button = st.button("Submit Investment Details")
 
@@ -282,3 +286,5 @@ def main():
             # Recommend policies after submission
             recommend_policy(investment_goal, investment_duration, policy_data, spending_model, le)
 
+    else:
+        st.info("Please log in or set up your profile to view the dashboard.")
