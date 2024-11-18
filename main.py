@@ -1,25 +1,9 @@
-
 import streamlit as st
-st.set_page_config(
-    page_title="Policy Suggestion App",
-    layout="centered",  # Center the content
-    initial_sidebar_state="collapsed"  # Collapse sidebar by default
-)
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import LabelEncoder
 import hashlib
-from datetime import date
 import os
-
-# Import your custom modules after the page config
-from models.policy_suggestions import recommend_policy, visualize_policy_comparison, get_user_input,policy_data,model_spending,display_policy_suggestion
-
+from datetime import date
+from models.policy_suggestions import get_user_input, recommend_policy, visualize_policy_comparison, policy_data, model_spending, display_policy_suggestion
 from models.spam_classifier import classify_message, extract_transaction_details
 
 # User Authentication Functions
@@ -165,11 +149,6 @@ def expense_dashboard():
                 recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
                 if recommended_policy is not None and suitable_policies is not None:
                     visualize_policy_comparison(suitable_policies)
-                    visualize_policy_comparison(suitable_policies)  # Make sure this function includes st.pyplot
-                    visualize_spending_categories(monthly_spending)  # This should also include st.pyplot for the chart
-                    visualize_monthly_trend(monthly_spending)  # Similarly, include st.pyplot here
-                    visualize_roi_by_policy_category(suitable_policies)  # Include st.pyplot as well
-
                 display_policy_suggestion(monthly_investment, investment_duration)
 
     # SMS Classification Section
