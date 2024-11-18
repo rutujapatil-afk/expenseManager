@@ -101,6 +101,29 @@ def get_user_input(form_key="investment_form"):
 
     return st.session_state.monthly_investment, st.session_state.investment_duration
 
+def visualize_spending_categories(monthly_spending):
+    spending_category_counts = monthly_spending['Spending Category'].value_counts().sort_values()
+    plt.figure(figsize=(10, 6))
+    sns.barplot(y=spending_category_counts.index, x=spending_category_counts, palette='viridis')
+    plt.title("Spending Category Distribution", fontsize=16, weight='bold')
+    plt.xlabel("Count", fontsize=14)
+    plt.ylabel("Spending Category", fontsize=14)
+    st.pyplot(plt)
+
+    # Simple Explanation
+    st.write("""
+            **What this graph shows:**
+            This graph breaks down your monthly expenses into different categories: Low, Medium, and High. 
+            Each bar represents how many months fall into each category, indicating the frequency of 
+            that spending level. 
+            
+            **Key Takeaways:**
+            - If most of your expenses fall into the 'Medium' category, this suggests that your spending 
+              is generally moderate.
+            - If you want to save, aim to bring down the frequency of 'High' spending months.
+    """)
+
+
 # Policy Recommendation
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
     user_spending = np.array([[user_investment]])
