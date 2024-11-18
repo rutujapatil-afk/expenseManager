@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score
 from datetime import date
 import os
 
+from main import get_user_input
 # Load Data
 @st.cache_data
 def load_data():
