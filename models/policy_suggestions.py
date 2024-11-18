@@ -226,6 +226,8 @@ def main():
     # Login
     st.sidebar.subheader("Login")
     username = st.sidebar.text_input("Username")
+    user_data = None  # Initialize user_data variable
+
     if username:
         user_data = UserAccount.load_user_data(username)
         if user_data is not None:
