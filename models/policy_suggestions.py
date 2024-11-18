@@ -259,13 +259,12 @@ def main():
             user_account.save()
             st.success("Profile saved successfully!")
 
-    # Only proceed if the user is logged in and profile is set
-    if username and user_data is not None:
-        st.subheader(f"Welcome, {username}!")
-        st.write("Here's your personalized dashboard.")
-
-        # Load Data
+    # Load Data (only after login or profile setup)
+    if username and (user_data is not None or investment_goal):
         policy_data, spending_data = load_data()
+        if policy_data is None or spending_data is None:
+            st.error("Failed to load data. Please try again.")
+            return
 
         # Preprocess Data
         monthly_spending, policy_data, le = preprocess_data(spending_data, policy_data)
@@ -273,18 +272,16 @@ def main():
         # Train Models
         spending_model, policy_model, efficiency_metrics, X_test_p, y_test_p = train_models(monthly_spending, policy_data)
 
-        # Add a "Submit" button to trigger insights display
+        # Allow insights only after submit
         submit_button = st.button("Submit Investment Details")
-
         if submit_button:
-            # Show the visualizations only after submit
+            # Show insights only after the user clicks "Submit"
             st.subheader("Data Insights:")
             visualize_monthly_spending_trend(monthly_spending)
             visualize_spending_categories(monthly_spending)
             visualize_roi_bar(policy_data)
 
-            # Recommend policies after submission
+            # Policy recommendation
             recommend_policy(investment_goal, investment_duration, policy_data, spending_model, le)
-
     else:
         st.info("Please log in or set up your profile to view the dashboard.")
