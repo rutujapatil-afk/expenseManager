@@ -102,7 +102,7 @@ def get_user_input():
     return st.session_state.monthly_investment, st.session_state.investment_duration
 
 # Policy Recommendation
-def recommend_policy(user_investment, investment_duration, policy_data, spending_model):
+def recommend_policy(user_investment, investment_duration, policy_data, spending_model, label_encoder):
     user_spending = np.array([[user_investment]])
     predicted_category = spending_model.predict(user_spending)[0]
     st.write(f"Predicted Spending Category: {predicted_category}")
@@ -117,20 +117,25 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
     if not suitable_policies.empty:
         suitable_policies = suitable_policies.copy()
         suitable_policies['Potential Return ($)'] = (user_investment * investment_duration) * (suitable_policies['Expected ROI'] / 100)
-        recommended_policy = suitable_policies.loc[suitable_policies['Potential Return ($)'].idxmax()]
+        top_policies = suitable_policies.nlargest(3, 'Potential Return ($)')
 
-        st.write("### Recommended Policy Based on Your Investment:")
-        st.write(recommended_policy[['Policy Name', 'Policy Type', 'Expected ROI', 'Investment Horizon', 'Minimum Investment', 'Potential Return ($)']])
+        st.subheader("Top 3 Recommended Policies:")
+        visualize_policy_comparison(top_policies)
 
-        st.write("### Reasons for Selection:")
-        st.write(f"1. *Expected ROI*: The selected policy has an expected ROI of {recommended_policy['Expected ROI']}%, which aligns with your goals.")
-        st.write(f"2. *Potential Return*: Based on your investment of ${user_investment} over {investment_duration} months, the potential return is ${recommended_policy['Potential Return ($)']:.2f}.")
-        st.write(f"3. *Investment Duration*: The maturity period aligns with your investment duration of {investment_duration // 12} years.")
-        
-        return recommended_policy, suitable_policies
+        # Select one best policy and print its details
+        best_policy = top_policies.iloc[0]
+
+        # Use inverse_transform to get the policy name from encoded 'Policy Type'
+        policy_name = label_encoder.inverse_transform([best_policy['Policy Type']])[0]
+
+        st.subheader("Recommended Policy for You:")
+        st.write(f"**Policy Type:** {policy_name}")
+        st.write(f"**Expected ROI:** {best_policy['Expected ROI']:.2f}%")
+        st.write(f"**Investment Horizon:** {best_policy['Investment Horizon']:.1f} years")
+        st.write(f"**Minimum Investment:** ${best_policy['Minimum Investment']:.2f}")
+        st.write(f"**Potential Return:** ${best_policy['Potential Return ($)']:.2f}")
     else:
         st.write("No suitable policies found for your spending category.")
-        return None, None
 
 # Visualization
 def visualize_policy_comparison(suitable_policies):
@@ -165,6 +170,75 @@ def visualize_policy_comparison(suitable_policies):
     else:
         st.write("No suitable policies to visualize.")
 
+# Visualization Functions
+def visualize_monthly_spending_trend(monthly_spending):
+    if not monthly_spending.empty:
+        monthly_spending['Readable Month'] = pd.to_datetime(monthly_spending['Month'].astype(str) + "01", format='%Y%m%d')
+        plt.figure(figsize=(12, 6))
+        sns.barplot(data=monthly_spending, x='Readable Month', y='Monthly Expense ($)', palette='coolwarm')
+        plt.xticks(rotation=45)
+        plt.title("Monthly Spending Trend", fontsize=16, weight='bold')
+        plt.xlabel("Month", fontsize=14)
+        plt.ylabel("Monthly Expense ($)", fontsize=14)
+        st.pyplot(plt)
+        
+        # Simple Explanation
+        st.write("""
+            **What this graph shows:**
+            This graph displays the total spending over time. The x-axis represents the months, 
+            and the y-axis shows how much was spent in each month. The color gradient shows changes 
+            in spending, with cooler tones representing lower spending and warmer tones showing higher spending. 
+            
+            **Key Takeaways:**
+            - Look for trends in the graph: are expenses rising, falling, or staying constant?
+            - Peaks may indicate months of higher-than-normal expenses, which could be useful to understand 
+              and plan for future spending.
+        """)
+
+def visualize_spending_categories(monthly_spending):
+    spending_category_counts = monthly_spending['Spending Category'].value_counts().sort_values()
+    plt.figure(figsize=(10, 6))
+    sns.barplot(y=spending_category_counts.index, x=spending_category_counts, palette='viridis')
+    plt.title("Spending Category Distribution", fontsize=16, weight='bold')
+    plt.xlabel("Count", fontsize=14)
+    plt.ylabel("Spending Category", fontsize=14)
+    st.pyplot(plt)
+
+    # Simple Explanation
+    st.write("""
+            **What this graph shows:**
+            This graph breaks down your monthly expenses into different categories: Low, Medium, and High. 
+            Each bar represents how many months fall into each category, indicating the frequency of 
+            that spending level. 
+            
+            **Key Takeaways:**
+            - If most of your expenses fall into the 'Medium' category, this suggests that your spending 
+              is generally moderate.
+            - If you want to save, aim to bring down the frequency of 'High' spending months.
+    """)
+
+def visualize_roi_bar(policy_data):
+    plt.figure(figsize=(10, 6))
+    avg_roi = policy_data.groupby('ROI Category')['Expected ROI'].mean().reset_index()
+    sns.barplot(data=avg_roi, x='ROI Category', y='Expected ROI', palette='Blues')
+    plt.title("Average Expected ROI by Policy Category", fontsize=16, weight='bold')
+    plt.xlabel("ROI Category", fontsize=14)
+    plt.ylabel("Average Expected ROI (%)", fontsize=14)
+    st.pyplot(plt)
+
+    # Simple Explanation
+    st.write("""
+            **What this graph shows:**
+            This bar chart displays the average expected ROI (Return on Investment) for each ROI category 
+            of the policies. The categories are 'Low', 'Medium', 'High', and 'Very High'. The y-axis shows 
+            the average ROI for each category. 
+
+            **Key Takeaways:**
+            - Higher categories, such as 'High' and 'Very High', indicate policies with better returns 
+              on investment.
+            - If you want a policy with a better ROI, look for options in the 'High' or 'Very High' categories. 
+    """)
+
 
 def display_policy_suggestion():
     """
@@ -178,9 +252,10 @@ def display_policy_suggestion():
     # Wait until the input is submitted
     if st.session_state.get("input_submitted", False):
         if st.button('Analyze'):
-            recommended_policy, suitable_policies = recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
-            
-            if recommended_policy is not None and suitable_policies is not None:
-                visualize_policy_comparison(suitable_policies)
+            recommend_policy(monthly_investment, investment_duration, policy_data, model_spending)
+            # Visualizations
+            visualize_monthly_spending_trend(monthly_spending)
+            visualize_spending_categories(monthly_spending)
+            visualize_roi_bar(policy_data)
         else:
             st.write("Please click 'Analyze' after filling out your investment details.")
