@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 import seaborn as sns
-import matplotlib as pt
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
@@ -15,35 +14,42 @@ def load_data():
     """
     Load the policy and spending data from CSV files.
     """
-    policy_data = pd.read_csv("data/insurance_policies_dataset.csv")
-    spending_data = pd.read_csv("data/transactions.csv")
+    try:
+        policy_data = pd.read_csv("data/insurance_policies_dataset.csv")
+        spending_data = pd.read_csv("data/transactions.csv")
+    except FileNotFoundError as e:
+        st.error(f"Error loading data: {e}")
+        return None, None
     return policy_data, spending_data
 
 # Data Preprocessing
 def preprocess_data(spending_data, policy_data):
+    if spending_data is None or policy_data is None:
+        return None, None, None
+
     spending_data.columns = spending_data.columns.str.strip()  # Strip any spaces in column names
     spending_data['Date'] = pd.to_datetime(spending_data['Date'])
-    
+
     # Group by month to get monthly expenses
     monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
     monthly_spending.rename(columns={'Amount': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
-    
+
     # Convert 'Month' to a comparable integer format (YYYYMM)
     monthly_spending['Month'] = monthly_spending['Month'].dt.year * 100 + monthly_spending['Month'].dt.month
     monthly_spending['Monthly Expense ($)'] = pd.to_numeric(monthly_spending['Monthly Expense ($)'], errors='coerce')
-    
+
     # Drop missing values
     monthly_spending = monthly_spending.dropna(subset=['Monthly Expense ($)'])
-    
+
     # Categorize spending into Low, Medium, and High
     monthly_spending['Spending Category'] = pd.cut(monthly_spending['Monthly Expense ($)'],
                                                     bins=[0, 500, 1500, np.inf],
                                                     labels=['Low', 'Medium', 'High'])
-    
+
     # Process policy data
     le = LabelEncoder()
     policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
-    
+
     # ROI category based on expected ROI
     if 'Expected ROI' in policy_data.columns:
         policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'], bins=[0, 5, 10, 15, np.inf], labels=['Low', 'Medium', 'High', 'Very High'])
@@ -62,6 +68,9 @@ def preprocess_data(spending_data, policy_data):
 
 # Train Models and Evaluate Efficiency
 def train_models(monthly_spending, policy_data):
+    if monthly_spending is None or policy_data is None:
+        return None, None, None, None, None
+
     # Spending Prediction Model
     X_spending = monthly_spending[['Month']]
     y_spending = monthly_spending['Spending Category']
@@ -88,7 +97,7 @@ def train_models(monthly_spending, policy_data):
 
 # Visualization Functions
 def visualize_monthly_spending_trend(monthly_spending):
-    if not monthly_spending.empty:
+    if monthly_spending is not None and not monthly_spending.empty:
         monthly_spending['Readable Month'] = pd.to_datetime(monthly_spending['Month'].astype(str) + "01", format='%Y%m%d')
         plt.figure(figsize=(12, 6))
         sns.barplot(data=monthly_spending, x='Readable Month', y='Monthly Expense ($)', palette='coolwarm')
@@ -97,27 +106,29 @@ def visualize_monthly_spending_trend(monthly_spending):
         plt.xlabel("Month", fontsize=14)
         plt.ylabel("Monthly Expense ($)", fontsize=14)
         st.pyplot(plt)
-        
+
 def visualize_spending_categories(monthly_spending):
-    spending_category_counts = monthly_spending['Spending Category'].value_counts().sort_values()
-    plt.figure(figsize=(10, 6))
-    sns.barplot(y=spending_category_counts.index, x=spending_category_counts, palette='viridis')
-    plt.title("Spending Category Distribution", fontsize=16, weight='bold')
-    plt.xlabel("Count", fontsize=14)
-    plt.ylabel("Spending Category", fontsize=14)
-    st.pyplot(plt)
+    if monthly_spending is not None and not monthly_spending.empty:
+        spending_category_counts = monthly_spending['Spending Category'].value_counts().sort_values()
+        plt.figure(figsize=(10, 6))
+        sns.barplot(y=spending_category_counts.index, x=spending_category_counts, palette='viridis')
+        plt.title("Spending Category Distribution", fontsize=16, weight='bold')
+        plt.xlabel("Count", fontsize=14)
+        plt.ylabel("Spending Category", fontsize=14)
+        st.pyplot(plt)
 
 def visualize_roi_bar(policy_data):
-    plt.figure(figsize=(10, 6))
-    avg_roi = policy_data.groupby('ROI Category')['Expected ROI'].mean().reset_index()
-    sns.barplot(data=avg_roi, x='ROI Category', y='Expected ROI', palette='Blues')
-    plt.title("Average Expected ROI by Policy Category", fontsize=16, weight='bold')
-    plt.xlabel("ROI Category", fontsize=14)
-    plt.ylabel("Average Expected ROI (%)", fontsize=14)
-    st.pyplot(plt)
+    if policy_data is not None and 'ROI Category' in policy_data.columns:
+        plt.figure(figsize=(10, 6))
+        avg_roi = policy_data.groupby('ROI Category')['Expected ROI'].mean().reset_index()
+        sns.barplot(data=avg_roi, x='ROI Category', y='Expected ROI', palette='Blues')
+        plt.title("Average Expected ROI by Policy Category", fontsize=16, weight='bold')
+        plt.xlabel("ROI Category", fontsize=14)
+        plt.ylabel("Average Expected ROI (%)", fontsize=14)
+        st.pyplot(plt)
 
 def visualize_policy_comparison(top_policies):
-    if not top_policies.empty:
+    if top_policies is not None and not top_policies.empty:
         plt.figure(figsize=(10, 6))
         categories = top_policies['Policy Type'].astype(str)
         x = np.arange(len(categories))
@@ -134,11 +145,17 @@ def visualize_policy_comparison(top_policies):
         plt.legend()
         st.pyplot(plt)
 
+# Recommendation System
 def recommend_policy(user_investment, investment_duration, policy_data, spending_model, label_encoder):
+    if spending_model is None or policy_data is None:
+        st.error("Data or model is missing.")
+        return
+
     user_spending = np.array([[user_investment]])
     predicted_category = spending_model.predict(user_spending)[0]
     st.write(f"Predicted Spending Category: {predicted_category}")
 
+    # Filter suitable policies
     if predicted_category == 'Low':
         suitable_policies = policy_data[policy_data['ROI Category'] == 'Low']
     elif predicted_category == 'Medium':
