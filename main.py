@@ -117,6 +117,9 @@ def expense_dashboard():
 
         # Logout Button
         if st.button("Logout"):
+            st.session_state.username = ""
+            st.session_state.input_submitted = False
+            st.session_state.is_signing_up = False
             st.session_state.clear()
             st.experimental_rerun()
 
