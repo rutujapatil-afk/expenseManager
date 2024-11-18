@@ -6,7 +6,6 @@ from datetime import date
 
 # Import necessary custom modules
 from models.policy_suggestions import (
-    recommend_policy,
     visualize_policy_comparison,
     get_user_input,
     policy_data,
@@ -16,6 +15,8 @@ from models.policy_suggestions import (
     visualize_monthly_spending_trend,
     visualize_avg_roi_by_policy_category
 )
+from .models.policy_suggestions import recommend_policy
+
 from models.spam_classifier import classify_message, extract_transaction_details
 
 # Set the page configuration for Streamlit
