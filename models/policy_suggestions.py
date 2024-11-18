@@ -135,55 +135,35 @@ def recommend_policy(user_investment, investment_duration, policy_data, spending
 # Visualization
 def visualize_policy_comparison(top_policies):
     if not top_policies.empty:
-        # Filter top 3 policies
-        top_policies = top_policies.nlargest(3, 'Potential Return ($)')
-
-        # Set up the figure with reduced size
-        plt.figure(figsize=(8, 6))  # Reduced size for better screen fit
-        
-        # Categories and indices
-        categories = top_policies['Policy Name']
+        plt.figure(figsize=(10, 6))
+        categories = top_policies['Policy Type'].astype(str)
         x = np.arange(len(categories))
-        width = 0.2  # Reduced width for less overlap
+        width = 0.3
 
-        # Bar chart for each metric
-        bars1 = plt.bar(x - width, top_policies['Expected ROI'], width, label='Expected ROI (%)', color='#1f77b4', edgecolor='black')
-        bars2 = plt.bar(x, top_policies['Investment Horizon'], width, label='Investment Horizon (years)', color='#2ca02c', edgecolor='black')
-        bars3 = plt.bar(x + width, top_policies['Potential Return ($)'], width, label='Potential Return ($)', color='#d62728', edgecolor='black')
+        plt.bar(x - width, top_policies['Expected ROI'], width, label='Expected ROI (%)', color='blue')
+        plt.bar(x, top_policies['Investment Horizon'], width, label='Investment Horizon (years)', color='green')
+        plt.bar(x + width, top_policies['Potential Return ($)'], width, label='Potential Return ($)', color='purple')
 
-        # Adding annotations
-        for bars in [bars1, bars2, bars3]:
-            for bar in bars:
-                height = bar.get_height()
-                plt.text(bar.get_x() + bar.get_width() / 2, height + 0.05, f"{height:.1f}", ha='center', fontsize=9)
-
-        # Adding labels and title
-        plt.xticks(x, categories, rotation=20, ha='right', fontsize=10)
-        plt.title("Top 3 Policies Comparison", fontsize=14, weight='bold')
-        plt.xlabel("Policy Name", fontsize=12)
-        plt.ylabel("Values", fontsize=12)
-        plt.grid(axis='y', linestyle='--', alpha=0.6)
-        plt.legend(loc='upper left', fontsize=10)
-
-        # Adjust layout for compactness
-        plt.tight_layout()
-
-        # Display the plot
+        plt.xticks(x, categories, rotation=45)
+        plt.title("Top Policies Comparison", fontsize=16, weight='bold')
+        plt.xlabel("Policy Type", fontsize=14)
+        plt.ylabel("Values", fontsize=14)
+        plt.legend()
         st.pyplot(plt)
 
-        # Explanation
+        # Simple Explanation
         st.write("""
             **What this graph shows:**
-            - **Expected ROI (%)**: Indicates the annual return rate you can expect from the policy.
-            - **Investment Horizon (years)**: Shows the recommended duration for the investment.
-            - **Potential Return ($)**: The total monetary return based on your investment input.
+            This bar chart compares the top 3 policies based on their Expected ROI, Investment Horizon, 
+            and Potential Return. Each policy is represented by three bars: one for ROI, one for Horizon, 
+            and one for Potential Return.
 
-            **How to use this:**
-            - Compare policies to see which one offers the best combination of ROI, investment horizon, and returns.
-            - Choose policies that align with your financial goals and timeline.
+            **Key Takeaways:**
+            - The higher the ROI, the better the potential return on your investment.
+            - Longer investment horizons generally give more time for returns to accumulate.
+            - The 'Potential Return' is directly linked to your investment and expected ROI.
         """)
-    else:
-        st.write("No suitable policies to visualize.")
+
 
 def display_policy_suggestion():
     """
