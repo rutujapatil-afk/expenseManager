@@ -1,15 +1,12 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
-from sklearn.preprocessing import LabelEncoder
 import streamlit as st
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 
-
-# Load Datasets
+# Load Data
 @st.cache_data
 def load_data():
     """
@@ -21,25 +18,37 @@ def load_data():
 
 # Data Preprocessing
 def preprocess_data(spending_data, policy_data):
-    spending_data.columns = spending_data.columns.str.strip()
+    spending_data.columns = spending_data.columns.str.strip()  # Strip any spaces in column names
     spending_data['Date'] = pd.to_datetime(spending_data['Date'])
+    
+    # Group by month to get monthly expenses
     monthly_spending = spending_data.groupby(spending_data['Date'].dt.to_period("M"))['Amount'].sum().reset_index()
     monthly_spending.rename(columns={'Amount': 'Monthly Expense ($)', 'Date': 'Month'}, inplace=True)
+    
+    # Convert 'Month' to a comparable integer format (YYYYMM)
     monthly_spending['Month'] = monthly_spending['Month'].dt.year * 100 + monthly_spending['Month'].dt.month
     monthly_spending['Monthly Expense ($)'] = pd.to_numeric(monthly_spending['Monthly Expense ($)'], errors='coerce')
+    
+    # Drop missing values
     monthly_spending = monthly_spending.dropna(subset=['Monthly Expense ($)'])
+    
+    # Categorize spending into Low, Medium, and High
     monthly_spending['Spending Category'] = pd.cut(monthly_spending['Monthly Expense ($)'],
                                                     bins=[0, 500, 1500, np.inf],
                                                     labels=['Low', 'Medium', 'High'])
+    
+    # Process policy data
     le = LabelEncoder()
     policy_data['Policy Type'] = le.fit_transform(policy_data['Policy Type'])
-
+    
+    # ROI category based on expected ROI
     if 'Expected ROI' in policy_data.columns:
         policy_data['ROI Category'] = pd.cut(policy_data['Expected ROI'], bins=[0, 5, 10, 15, np.inf], labels=['Low', 'Medium', 'High', 'Very High'])
     else:
         st.error("Column 'Expected ROI' is missing from policy data.")
         return None, None, None
 
+    # Investment horizon extraction
     if 'Investment Horizon' in policy_data.columns:
         policy_data['Investment Horizon'] = policy_data['Investment Horizon'].str.extract(r'(\d+)', expand=False).astype(float)
     else:
